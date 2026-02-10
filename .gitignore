@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+env/
+.env
+
+# VS Code
+.vscode/
+
+# Project Logs
+logs/
+*.log
+
+# PyInstaller / Build
+build/
+dist/
+*.spec
+
+# System
+.DS_Store
+Thumbs.db
+
+# Brain / Agent Artifacts (if locally stored in project, though usually outside)
+.gemini/

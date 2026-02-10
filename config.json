@@ -1,0 +1,15 @@
+{
+    "lab_name": "Laboratorio 1",
+    "udp_port": 5005,
+    "http_port": 8080,
+    "default_mode": "restart",
+    "whitelist": [
+        "google.com",
+        "wikipedia.org",
+        "classroom.google.com",
+        "jhiolji"
+    ],
+    "veyon_cli_path": "C:\\Program Files\\Veyon\\veyon-cli.exe",
+    "block_mode": "restart",
+    "language": "it"
+}

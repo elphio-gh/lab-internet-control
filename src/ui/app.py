@@ -1,0 +1,248 @@
+
+import customtkinter as ctk
+import tkinter as tk
+from tkinter import messagebox
+from src.ui.widgets import PCWidget, ActionButton, PCRow
+from src.ui.settings import SettingsFrame  # [NEW]
+from src.utils.config import config
+from src.utils.i18n import i18n  # [NEW]
+from src.core.command_dispatcher import dispatcher
+from src.core.pac_manager import PACManager
+from src.core.veyon_manager import veyon
+
+class App(ctk.CTk):
+    """
+    Finestra principale dell'applicazione.
+    """
+    def __init__(self, pac_manager):
+        super().__init__()
+        self.pac_manager = pac_manager
+
+        self.title(i18n.t("APP_TITLE"))
+        self.geometry("1000x700")
+        
+        ctk.set_appearance_mode("Dark")
+        ctk.set_default_color_theme("blue")
+
+        self.grid_columnconfigure(1, weight=1)
+        self.grid_rowconfigure(0, weight=1)
+
+        # === Sidebar (Sinistra) ===
+        self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
+        self.sidebar.grid(row=0, column=0, sticky="nsew")
+        
+        self.lbl_title = ctk.CTkLabel(self.sidebar, text="Lab Control", font=("Arial", 20, "bold"))
+        self.lbl_title.pack(pady=20)
+        
+        # [NEW] Versione Software (Sotto il titolo)
+        self.lbl_version = ctk.CTkLabel(self.sidebar, text="v0.1.0", font=("Arial", 12), text_color="gray70")
+        self.lbl_version.pack(pady=(0, 20))
+        
+        # Pulsante Dashboard (per tornare alla vista PC)
+        self.btn_dashboard = ctk.CTkButton(self.sidebar, text="💻 Dashboard", command=self.show_classroom, fg_color="transparent", border_width=1)
+        self.btn_dashboard.pack(pady=10, padx=20, fill="x")
+
+        # Pulsanti Azione (Testi Localizzati)
+        self.btn_block = ActionButton(self.sidebar, text=i18n.t("BLOCK"), command=self.action_block, color="#CC0000")
+        self.btn_block.pack(pady=(10, 5), padx=20, fill="x")
+
+        # [NEW] Selettore Modalità Blocco
+        # Forziamo sempre "Restart" all'avvio come richiesto
+        config.set("block_mode", "restart")
+        self.block_mode_var = ctk.StringVar(value=i18n.t("MODE_RESTART"))
+        self.opt_block_mode = ctk.CTkOptionMenu(
+            self.sidebar, 
+            values=[i18n.t("MODE_RESTART"), i18n.t("MODE_MANUAL")],
+            command=self.on_change_block_mode,
+            variable=self.block_mode_var,
+            font=("Arial", 11),
+            fg_color="#555555",
+            button_color="#444444"
+        )
+        self.opt_block_mode.pack(pady=(0, 20), padx=20, fill="x")
+
+        self.btn_unblock = ActionButton(self.sidebar, text=i18n.t("UNBLOCK"), command=self.action_unblock, color="#009900")
+        self.btn_unblock.pack(pady=10, padx=20, fill="x")
+
+        self.btn_whitelist = ActionButton(self.sidebar, text=i18n.t("WL_ON"), command=self.action_whitelist, color="#CCCC00")
+        self.btn_whitelist.pack(pady=(10, 5), padx=20, fill="x")
+        self.btn_whitelist.configure(text_color="black")
+
+        # [NEW] Pulsante Edit Whitelist
+        self.btn_edit_wl = ctk.CTkButton(self.sidebar, text=i18n.t("BTN_EDIT_WL"), command=self.open_whitelist_settings, fg_color="transparent", border_width=1, font=("Arial", 11))
+        self.btn_edit_wl.pack(pady=(0, 20), padx=20, fill="x")
+
+        # [NEW] Selettore Lingua (Bandierine) in basso
+        self.sidebar_bottom = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.sidebar_bottom.pack(side="bottom", fill="x", padx=10, pady=10)
+
+        current_lang_code = config.get("language") or "it"
+        lang_map = {k: v for k, v in i18n.LANGUAGES.items()}
+        self.reverse_lang_map = {v: k for k, v in lang_map.items()}
+
+        self.opt_lang = ctk.CTkOptionMenu(
+            self.sidebar_bottom,
+            values=list(lang_map.values()),
+            command=self.on_change_language,
+            font=("Arial", 12),
+            fg_color="#333333",
+            button_color="#222222"
+        )
+        self.opt_lang.set(lang_map.get(current_lang_code, "🇮🇹 Italiano"))
+        self.opt_lang.pack(side="left", fill="x", expand=True)
+
+        # Pulsante Settings (Ridotto a icona piccola)
+        self.btn_settings = ctk.CTkButton(self.sidebar_bottom, text="⚙️", command=self.show_settings, width=30, fg_color="transparent", border_width=1)
+        self.btn_settings.pack(side="right", padx=(5, 0))
+
+        # === Container Principale (Destra) ===
+        self.container = ctk.CTkFrame(self, fg_color="transparent")
+        self.container.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+        self.container.grid_columnconfigure(0, weight=1)
+        self.container.grid_rowconfigure(0, weight=1)
+
+        # -- Vista Classroom (Table Header + Scrollable) --
+        self.view_classroom_container = ctk.CTkFrame(self.container, fg_color="transparent")
+        
+        # Header Tabella
+        self.header_frame = ctk.CTkFrame(self.view_classroom_container, height=40, corner_radius=0, fg_color="transparent")
+        self.header_frame.pack(fill="x", pady=(0, 5))
+        self.header_frame.grid_columnconfigure(0, weight=0, minsize=50)
+        self.header_frame.grid_columnconfigure(1, weight=1)
+        self.header_frame.grid_columnconfigure(2, weight=1)
+        self.header_frame.grid_columnconfigure(3, weight=1)
+        
+        ctk.CTkLabel(self.header_frame, text="Stato", font=("Arial", 12, "bold")).grid(row=0, column=0)
+        ctk.CTkLabel(self.header_frame, text="Hostname", font=("Arial", 12, "bold"), anchor="w").grid(row=0, column=1, sticky="w", padx=10)
+        ctk.CTkLabel(self.header_frame, text="Utente", font=("Arial", 12, "bold"), anchor="w").grid(row=0, column=2, sticky="w", padx=10)
+        ctk.CTkLabel(self.header_frame, text="Modalità", font=("Arial", 12, "bold"), anchor="e").grid(row=0, column=3, sticky="e", padx=10)
+
+        # Scrollable Area per le righe
+        self.view_classroom = ctk.CTkScrollableFrame(self.view_classroom_container, label_text="")
+        self.view_classroom.pack(fill="both", expand=True)
+
+        # [NEW] Etichetta Notifiche (Toast) in basso
+        self.lbl_notification = ctk.CTkLabel(self.view_classroom_container, text="", height=30, corner_radius=5, fg_color="transparent")
+        self.lbl_notification.pack(fill="x", pady=(10, 0))
+
+        # -- Vista Settings --
+        self.view_settings = SettingsFrame(self.container, self.pac_manager)
+
+        # Stato iniziale
+        self.pc_widgets = {}
+        self.whitelist_active = False
+        self.show_classroom()
+
+    def show_notification(self, message, color="green"):
+        """Mostra una notifica temporanea (Toast) senza bloccare l'UI."""
+        self.lbl_notification.configure(text=message, fg_color=color, text_color="white")
+        # Nascondi dopo 3 secondi
+        self.after(3000, lambda: self.lbl_notification.configure(text="", fg_color="transparent"))
+
+    def show_classroom(self):
+        self.view_settings.grid_forget()
+        self.view_classroom_container.grid(row=0, column=0, sticky="nsew") # Mostra container (Header + List)
+        self.btn_dashboard.configure(fg_color=("gray75", "gray25")) # Highlight
+        self.btn_settings.configure(fg_color="transparent")
+        
+        # Ricarichiamo se vuoto (es. primo avvio)
+        if not self.pc_widgets:
+            self.load_pc_table()
+
+    def show_settings(self):
+        self.view_classroom_container.grid_forget()
+        self.view_settings.grid(row=0, column=0, sticky="nsew")
+        self.btn_dashboard.configure(fg_color="transparent")
+        self.btn_settings.configure(fg_color=("gray75", "gray25")) # Highlight
+
+    def load_pc_table(self):
+        hosts = veyon.get_hosts()
+        hosts.sort() # Ordine Alfabetico
+
+        for widget in self.view_classroom.winfo_children():
+            widget.destroy()
+        self.pc_widgets = {}
+
+        if not hosts:
+            lbl = ctk.CTkLabel(self.view_classroom, text="Nessun PC trovato.", text_color="orange")
+            lbl.pack(pady=20)
+            return
+            
+        # from src.ui.widgets import PCRow # Già importato
+
+        for i, hostname in enumerate(hosts):
+            # Alterna colori per leggibilità (Opzionale, ctk gestisce theme, ma possiamo dare un tocco)
+            bg_color = "transparent" # Lasciamo default per clean look
+            
+            row = PCRow(self.view_classroom, hostname=hostname, status="UNKNOWN", fg_color=bg_color)
+            row.pack(fill="x", pady=2, padx=5)
+            self.pc_widgets[hostname] = row
+
+    def on_change_block_mode(self, choice):
+        """Callback: Aggiorna config quando cambia la modalità."""
+        code = "restart" if choice == i18n.t("MODE_RESTART") else "manual"
+        config.set("block_mode", code)
+
+    def on_change_language(self, choice):
+        """Callback: Aggiorna lingua e avvisa riavvio."""
+        new_code = self.reverse_lang_map.get(choice, "it")
+        config.set("language", new_code)
+        messagebox.showinfo("Lingua", i18n.t("LBL_LANG")) # "Lingua (Riavvio richiesto)"
+
+    def open_whitelist_settings(self):
+        """Apre le impostazioni al tab Whitelist."""
+        self.show_settings()
+        self.view_settings.select_whitelist_tab()
+
+    # I metodi action_ rimangono uguali, ma usano self.pc_widgets che ora è popolato in load_pc_grid
+    def action_block(self):
+        if not self.pc_widgets: return
+        
+        # Reset Whitelist Toggle
+        self.whitelist_active = False
+        self.btn_whitelist.configure(text=i18n.t("WL_ON"))
+        
+        hosts = list(self.pc_widgets.keys())
+        # Leggiamo dal config (che è aggiornato dal selettore)
+        mode = config.get("block_mode") or "restart"
+        dispatcher.block_internet(hosts, mode=mode)
+        self.show_notification(i18n.t("MSG_BLOCK").format(len(hosts)), color="#CC0000")
+
+    def action_unblock(self):
+        if not self.pc_widgets: return
+
+        # Reset Whitelist Toggle
+        self.whitelist_active = False
+        self.btn_whitelist.configure(text=i18n.t("WL_ON"))
+
+        hosts = list(self.pc_widgets.keys())
+        dispatcher.unblock_internet(hosts)
+        self.show_notification(i18n.t("MSG_UNBLOCK").format(len(hosts)), color="#009900")
+
+    def action_whitelist(self):
+        if not self.pc_widgets: return
+        hosts = list(self.pc_widgets.keys())
+
+        if not self.whitelist_active:
+            # ATTIVA WHITELIST
+            pac_url = f"http://{config.get('lab_ip', '192.168.1.100')}:{config.get('http_port')}/proxy.pac"
+            dispatcher.apply_whitelist(hosts, pac_url)
+            
+            self.whitelist_active = True
+            self.btn_whitelist.configure(text=i18n.t("WL_OFF")) # Diventa "DISATTIVA"
+            self.show_notification(i18n.t("MSG_WHITELIST").format(len(hosts)), color="#CCCC00")
+        else:
+            # DISATTIVA WHITELIST -> TORNA A BLOCCATO (o Blocca tutto per sicurezza)
+            mode = config.get("block_mode") or "restart"
+            dispatcher.block_internet(hosts, mode=mode)
+            
+            self.whitelist_active = False
+            self.btn_whitelist.configure(text=i18n.t("WL_ON")) # Torna "CONSENTI"
+            self.show_notification("Whitelist Disattivata. Internet BLOCCATO.", color="#CC0000")
+
+
+    def update_pc_status(self, hostname, status, user=None):
+        for name, widget in self.pc_widgets.items():
+            if name.lower() == hostname.lower():
+                widget.update_status(status, user)
+                return
