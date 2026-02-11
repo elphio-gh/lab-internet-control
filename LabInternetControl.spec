@@ -12,10 +12,13 @@ a = Analysis(
     ['src/main.py'],
     pathex=[],
     binaries=[],
-    datas=[
-        (customtkinter_path, 'customtkinter/'),
-        ('assets/', 'assets/'),
-    ],
+datas=[
+    (customtkinter_path, 'customtkinter/'),
+]
+
+# 🎓 DIDATTICA: Includiamo la cartella assets solo se esiste
+if os.path.exists('assets') and os.listdir('assets'):
+    datas.append(('assets/', 'assets/'))
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
