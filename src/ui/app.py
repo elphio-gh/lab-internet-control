@@ -8,7 +8,9 @@ from src.utils.config import config
 from src.utils.i18n import i18n  # [NEW]
 from src.core.command_dispatcher import dispatcher
 from src.core.pac_manager import PACManager
+from src.core.pac_manager import PACManager
 from src.core.veyon_manager import veyon
+from src.utils.version import APP_VERSION
 
 class App(ctk.CTk):
     """
@@ -34,9 +36,9 @@ class App(ctk.CTk):
         self.lbl_title = ctk.CTkLabel(self.sidebar, text="Lab Control", font=("Arial", 20, "bold"))
         self.lbl_title.pack(pady=20)
         
-        # [NEW] Versione Software (Sotto il titolo)
-        self.lbl_version = ctk.CTkLabel(self.sidebar, text="v0.1.0", font=("Arial", 12), text_color="gray70")
-        self.lbl_version.pack(pady=(0, 20))
+        # [NEW] Status Panel
+        self.lbl_status = ctk.CTkLabel(self.sidebar, text="UNKNOWN", font=("Arial", 14, "bold"), text_color="gray")
+        self.lbl_status.pack(pady=(0, 20))
         
         # Pulsante Dashboard (per tornare alla vista PC)
         self.btn_dashboard = ctk.CTkButton(self.sidebar, text="💻 Dashboard", command=self.show_classroom, fg_color="transparent", border_width=1)
@@ -131,11 +133,33 @@ class App(ctk.CTk):
         # Stato iniziale
         self.pc_widgets = {}
         self.whitelist_active = False
+        
+        # Inizializza stato UI
+        self.update_gui_status("ON") # Default presumiamo sbloccato o unknown
         self.show_classroom()
 
-    def show_notification(self, message, color="green"):
+    def update_gui_status(self, mode):
+        """
+        Aggiorna l'indicatore di stato globale e i pulsanti.
+        mode: "ON" (Sbloccato), "OFF" (Bloccato), "WL" (Whitelist)
+        """
+        if mode == "ON":
+            self.lbl_status.configure(text="✅ INTERNET ON", text_color="#00FF00")
+            self.btn_whitelist.configure(text=i18n.t("WL_ON"), fg_color="#CCCC00", hover_color="#AAAA00") 
+            self.whitelist_active = False
+        elif mode == "OFF":
+            self.lbl_status.configure(text="⛔ BLOCKED", text_color="#FF0000")
+            self.btn_whitelist.configure(text=i18n.t("WL_ON"), fg_color="#CCCC00", hover_color="#AAAA00")
+            self.whitelist_active = False
+        elif mode == "WL":
+            self.lbl_status.configure(text="🛡️ WHITELIST", text_color="#FFFF00")
+            # Pulsante Whitelist diventa "Disattiva" e cambia stile
+            self.btn_whitelist.configure(text=i18n.t("WL_OFF"), fg_color="#D4AF37", hover_color="#B5962F") # Gold/Dark Yellow
+            self.whitelist_active = True
+
+    def show_notification(self, message, color="green", text_color="white"):
         """Mostra una notifica temporanea (Toast) senza bloccare l'UI."""
-        self.lbl_notification.configure(text=message, fg_color=color, text_color="white")
+        self.lbl_notification.configure(text=message, fg_color=color, text_color=text_color)
         # Nascondi dopo 3 secondi
         self.after(3000, lambda: self.lbl_notification.configure(text="", fg_color="transparent"))
 
@@ -207,6 +231,7 @@ class App(ctk.CTk):
         mode = config.get("block_mode") or "restart"
         dispatcher.block_internet(hosts, mode=mode)
         self.show_notification(i18n.t("MSG_BLOCK").format(len(hosts)), color="#CC0000")
+        self.update_gui_status("OFF")
 
     def action_unblock(self):
         if not self.pc_widgets: return
@@ -218,6 +243,7 @@ class App(ctk.CTk):
         hosts = list(self.pc_widgets.keys())
         dispatcher.unblock_internet(hosts)
         self.show_notification(i18n.t("MSG_UNBLOCK").format(len(hosts)), color="#009900")
+        self.update_gui_status("ON")
 
     def action_whitelist(self):
         if not self.pc_widgets: return
@@ -225,20 +251,32 @@ class App(ctk.CTk):
 
         if not self.whitelist_active:
             # ATTIVA WHITELIST
+            
+            # [NEW] Check modifiche non salvate
+            if self.view_settings.has_unsaved_changes():
+                answer = messagebox.askyesnocancel(
+                    i18n.t("UNSAVED_CHANGES_TITLE"),
+                    i18n.t("UNSAVED_CHANGES_MSG")
+                )
+                if answer is None: # Cancel
+                    return
+                elif answer is True: # Yes -> Salva
+                    self.view_settings.save_whitelist()
+                    # Procedi con l'attivazione
+                # elif answer is False: # No -> Procedi con vecchia config
+            
             pac_url = f"http://{config.get('lab_ip', '192.168.1.100')}:{config.get('http_port')}/proxy.pac"
             dispatcher.apply_whitelist(hosts, pac_url)
             
-            self.whitelist_active = True
-            self.btn_whitelist.configure(text=i18n.t("WL_OFF")) # Diventa "DISATTIVA"
-            self.show_notification(i18n.t("MSG_WHITELIST").format(len(hosts)), color="#CCCC00")
+            self.show_notification(i18n.t("MSG_WHITELIST").format(len(hosts)), color="#CCCC00", text_color="black")
+            self.update_gui_status("WL")
         else:
             # DISATTIVA WHITELIST -> TORNA A BLOCCATO (o Blocca tutto per sicurezza)
             mode = config.get("block_mode") or "restart"
             dispatcher.block_internet(hosts, mode=mode)
             
-            self.whitelist_active = False
-            self.btn_whitelist.configure(text=i18n.t("WL_ON")) # Torna "CONSENTI"
             self.show_notification("Whitelist Disattivata. Internet BLOCCATO.", color="#CC0000")
+            self.update_gui_status("OFF")
 
 
     def update_pc_status(self, hostname, status, user=None):

@@ -9,12 +9,16 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter).
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.2.0**
 
 ## Caratteristiche Principali
 
 - **Fail-safe**: Internet viene ripristinato automaticamente al riavvio del PC studente.
-- **Interfaccia Semplice**: Pulsanti grandi e chiari (Blocca, Sblocca, Whitelist).
+- **Interfaccia Semplice & Intuitiva**: Dashboard con indicatori visivi chiari (Verde/Rosso/Giallo) per lo stato di Internet.
+- **Whitelist Intelligente**: Modalità "Sito Consentito" con visual feedback immediato e controllo modifiche non salvate.
+- **Gestione Veyon & CSV**: 
+    - Import/Export configurazione PC.
+    - Template CSV scaricabile per facilitare l'importazione.
 - **Cross-Platform**: Sviluppato per girare su Windows 10/11.
 - **Nessuna installazione server**: Funziona peer-to-peer (Docente -> Veyon -> Studenti).
 
@@ -30,6 +34,7 @@ Sviluppato in Python con interfaccia grafica moderna (CustomTkinter).
 3.  Installare le dipendenze:
     ```bash
     pip install -r requirements.txt
+    # Nota per Arch Linux: installa anche tk con 'sudo pacman -S tk'
     ```
 4.  Avviare l'applicazione:
     ```bash
@@ -42,6 +47,14 @@ Sviluppato in Python con interfaccia grafica moderna (CustomTkinter).
 - `src/core/`: Logica di business (Registro, PAC, Veyon).
 - `src/ui/`: Interfaccia grafica.
 - `src/network/`: Server UDP (telemetria) e HTTP (PAC).
+
+## Distribuzione (Windows)
+
+Per distribuire il software nei laboratori, segui la procedura nella VM Windows:
+1.  Eseguire `python build_windows.py` per creare la build con PyInstaller.
+2.  Utilizzare **Inno Setup** con il file `installer_config.iss` per generare l'installer finale.
+
+Le configurazioni e i log degli utenti verranno salvati in `%LOCALAPPDATA%\LabInternetControl` per garantire la compatibilità con i permessi di sistema.
 
 ## Licenza
 

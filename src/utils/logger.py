@@ -18,8 +18,15 @@ class Logger:
         return cls._instance
 
     def _setup(self):
-        # 🎓 DIDATTICA: Creiamo una cartella 'logs' se non esiste, per tenere tutto ordinato.
-        log_dir = "logs"
+        # 🎓 DIDATTICA: Su Windows, se l'app è in Program Files, non possiamo scrivere log lì.
+        # Usiamo %LOCALAPPDATA% per i log persistenti dell'utente.
+        if os.name == 'nt':
+            appdata_dir = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
+            log_dir = os.path.join(appdata_dir, "LabInternetControl", "logs")
+        else:
+            # Su Linux/Sviluppo manteniamo la cartella locale per ora
+            log_dir = "logs"
+
         if not os.path.exists(log_dir):
             os.makedirs(log_dir)
 
@@ -31,8 +38,8 @@ class Logger:
             level=logging.DEBUG,
             format="%(asctime)s - %(levelname)s - %(message)s",
             handlers=[
-                logging.FileHandler(log_file),  # Scrive su file
-                logging.StreamHandler(sys.stdout) # Scrive in console (utile per noi dev)
+                logging.FileHandler(log_file, encoding='utf-8'),  # Scrive su file
+                logging.StreamHandler(sys.stdout) # Scrive in console
             ]
         )
         self.logger = logging.getLogger("LabInternetControl")

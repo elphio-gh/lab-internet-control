@@ -68,19 +68,36 @@ class CommandDispatcher:
             full_cmd = f"{cmd_block} && ({cmd_del_runonce} || echo RunOnce not present)"
             log.info("Blocking Mode: MANUAL (RunOnce clear)")
         
+        # [NEW] Assicuriamoci che AutoConfigURL (PAC) sia vuoto per evitare conflitti
+        cmd_clear_pac = 'reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v AutoConfigURL /f'
+        full_cmd = f"({cmd_clear_pac} || echo No PAC) && {full_cmd}"
+        
         for host in hosts:
             self._execute_remote_command(host, full_cmd)
 
     def unblock_internet(self, hosts):
         """Sblocca internet."""
-        cmd = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f'
+        # Disabilita Proxy Manuale
+        cmd_proxy = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f'
+        # Rimuovi PAC se presente
+        cmd_pac = 'reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v AutoConfigURL /f'
+        
+        # Esegui entrambi (gestendo errore se PAC non esiste)
+        cmd = f'{cmd_proxy} && ({cmd_pac} || echo No PAC to delete)'
+        
         for host in hosts:
             self._execute_remote_command(host, cmd)
 
     def apply_whitelist(self, hosts, pac_url):
         """Applica la whitelist tramite PAC."""
-        # Imposta URL autoconfig
-        cmd = f'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v AutoConfigURL /t REG_SZ /d "{pac_url}" /f'
+        # 1. Imposta URL autoconfig
+        cmd_pac = f'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v AutoConfigURL /t REG_SZ /d "{pac_url}" /f'
+        
+        # 2. [NEW] Disabilita Proxy Manuale per evitare conflitti (lasciamo fare tutto al PAC)
+        cmd_proxy_off = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f'
+        
+        cmd = f'{cmd_pac} && {cmd_proxy_off}'
+        
         for host in hosts:
             self._execute_remote_command(host, cmd)
 

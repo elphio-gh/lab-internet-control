@@ -1,0 +1,29 @@
+# Tasks
+
+- [x] Implement Veyon CSV Import/Export Logic
+    - [x] Create `VeyonManager.export_csv` method
+    - [x] Create `VeyonManager.import_csv` method (with overwrite option)
+- [x] Add Settings UI for Import/Export
+    - [x] Add "Export Configuration" button
+    - [x] Add "Import Configuration" button
+    - [x] Add confirmation dialog for overwrite on import
+- [x] Verify functionality
+- [x] Definire e preparare la distribuzione per Windows
+    - [x] Creare script di build con PyInstaller
+    - [x] Preparare configurazione per installer (Inno Setup)
+    - [x] Documentare la procedura di build nella VM Windows
+- [x] Risoluzione bug ambiente locale (Arch Linux)
+    - [x] Installazione pacchetto 'tk'
+    - [x] Documentazione dipendenza nel README
+- [x] Funzionalità Template CSV per PC
+    - [x] Creare metodo `get_template_csv` in `VeyonManager`
+    - [x] Aggiungere tasto "Scarica Esempio" in `SettingsFrame` (Default: Desktop)
+    - [x] Rimuovere Tab "Generali" (non necessario)
+- [x] Miglioramento Gestione Whitelist e Git
+    - [x] Rimuovere `config.json` da Git e aggiungere a `.gitignore`
+    - [x] Implementare controllo modifiche non salvate (Avviso "Modifiche Pendenti")
+    - [x] Migliore feedback visivo (Status Panel e Colori Whitelist)
+- [x] Tab Info (About)
+    - [x] Creazione `src/utils/version.py`
+    - [x] Tab "About" con Licenza e Autore
+    - [x] Versione dinamica nella Sidebar
