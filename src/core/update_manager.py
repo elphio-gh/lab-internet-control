@@ -31,9 +31,11 @@ class UpdateManager:
                 latest_tag = data.get("tag_name", "").strip()
                 html_url = data.get("html_url", "")
                 
-                # Rimuovi eventuale 'v' iniziale per confronto pulito
-                clean_latest = latest_tag.lstrip("v")
-                clean_current = self.current_version.lstrip("v")
+                # Pulizia robusta versione (gestisce v0.3.1, v.0.3.1, .0.3.1)
+                clean_latest = latest_tag.lstrip("v").lstrip(".")
+                clean_current = self.current_version.lstrip("v").lstrip(".")
+                
+                log.debug(f"Confronto versioni: Cloud='{clean_latest}' vs Local='{clean_current}'")
                 
                 if version.parse(clean_latest) > version.parse(clean_current):
                     log.info(f"Nuovo aggiornamento trovato: {latest_tag}")
