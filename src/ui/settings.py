@@ -14,7 +14,6 @@ class SettingsFrame(ctk.CTkFrame):
     """
     def __init__(self, master, pac_manager, **kwargs):
         super().__init__(master, **kwargs)
-        super().__init__(master, **kwargs)
         self.pac_manager = pac_manager
         self.update_manager = UpdateManager() # [NEW] Istanza locale o passata? Meglio nuova tanto è leggera
         

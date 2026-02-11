@@ -19,7 +19,7 @@ class App(ctk.CTk):
     """
     def __init__(self, pac_manager):
         super().__init__()
-        super().__init__()
+
         self.pac_manager = pac_manager
         self.update_manager = UpdateManager() # [NEW]
 
@@ -39,10 +39,6 @@ class App(ctk.CTk):
         self.lbl_title = ctk.CTkLabel(self.sidebar, text="Lab Control", font=("Arial", 20, "bold"))
         self.lbl_title.pack(pady=20)
 
-        # [NEW] Pulsante Aggiornamento (Nascosto di default)
-        self.btn_update = ctk.CTkButton(self.sidebar, text="⬇️ Update Available", command=self.open_update, fg_color="#2CC02C", hover_color="#25A025", font=("Arial", 12, "bold"))
-        # self.btn_update.pack(pady=(0, 10), padx=20, fill="x") # Lo mostriamo solo se serve
-        
         # [NEW] Status Panel
         self.lbl_status_main = ctk.CTkLabel(self.sidebar, text="UNKNOWN", font=("Arial", 16, "bold"), text_color="gray")
         self.lbl_status_main.pack(pady=(0, 5))
@@ -160,6 +156,18 @@ class App(ctk.CTk):
 
         # [NEW] Avvio Scansione Periodica Stato (Agent-less)
         self.start_status_scan()
+
+    def enforce_state(self, mode):
+        """Riapplica lo stato salvato all'avvio (senza notifica)."""
+        if not self.pc_widgets: return
+        hosts = list(self.pc_widgets.keys())
+
+        if mode == "OFF":
+            block_mode = config.get("block_mode") or "restart"
+            dispatcher.block_internet(hosts, mode=block_mode)
+        elif mode == "WL":
+            pac_url = f"http://{config.get('lab_ip', '192.168.1.100')}:{config.get('http_port')}/proxy.pac"
+            dispatcher.apply_whitelist(hosts, pac_url)
 
     def update_gui_status(self, mode):
         """

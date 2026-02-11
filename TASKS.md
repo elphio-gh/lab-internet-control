@@ -1,5 +1,13 @@
 # Tasks
 
+- [x] Fix Startup Popup Bug (v0.3.1)
+    - [x] Removed double initialization in `src/ui/app.py`
+    - [x] Verify fix locally
+    - [x] Bump version to v0.3.1
+        - [x] `src/utils/version.py`
+        - [x] `README.md`
+        - [x] `installer_config.iss`
+
 - [x] Implement Veyon CSV Import/Export Logic
     - [x] Create `VeyonManager.export_csv` method
     - [x] Create `VeyonManager.import_csv` method (with overwrite option)
