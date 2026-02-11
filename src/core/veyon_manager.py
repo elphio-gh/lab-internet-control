@@ -27,13 +27,12 @@ class VeyonManager:
         if platform.system() == "Windows":
             hosts = self._get_hosts_from_cli()
         
-        # 2. Se vuoto (o Linux/Errore), usa Mock
+        # 2. Se vuoto (o Linux/Errore), restituisce lista vuota
         if not hosts:
             if platform.system() != "Windows":
-                 log.info("Sistema non-Windows rilevato. Uso Mock Veyon Hosts.")
+                 log.info("Sistema non-Windows rilevato. Nessun host recuperato (Modalità Reale).")
             else:
-                 log.warning("Impossibile recuperare host da Veyon. Uso Mock.")
-            hosts = self._get_mock_hosts()
+                 log.warning("Impossibile recuperare host da Veyon.")
             
         return hosts
 
@@ -80,15 +79,6 @@ class VeyonManager:
             log.error(f"Eccezione Veyon CLI: {e}")
             return []
 
-    def _get_mock_hosts(self):
-        """
-        Genera una lista casuale di PC per simulare un laboratorio.
-        Tra 5 e 40 PC come richiesto.
-        """
-        count = random.randint(5, 40)
-        log.info(f"Generati {count} host MOCK per la simulazione.")
-        return [f"PC-{i:02d}" for i in range(1, count + 1)]
-
 
     def export_csv(self, file_path):
         """
@@ -102,14 +92,8 @@ class VeyonManager:
         # Comando: veyon-cli networkobjects export <file> format:...
         # Su Linux/Mock potremmo voler simulare se non c'è veyon.
         if platform.system() != "Windows":
-             log.info(f"[MOCK] Esportazione CSV simulata verso {file_path}")
-             try:
-                 with open(file_path, 'w') as f:
-                     f.write("type;name;host;mac;location\n")
-                     f.write("computer;PC-01;PC-01;00:11:22:33:44:55;Lab1\n")
-                 return True, "Export simulato completato."
-             except Exception as e:
-                 return False, str(e)
+             log.warning("Export CSV non disponibile su Linux (Richiede Veyon CLI).")
+             return False, "Operazione disponibile solo su Windows con Veyon."
 
         cmd = [
             self.veyon_cli, 
@@ -142,8 +126,8 @@ class VeyonManager:
              return False, "Veyon CLI non trovato."
 
         if platform.system() != "Windows":
-             log.info(f"[MOCK] Importazione CSV simulata da {file_path} (Clear={clear_existing})")
-             return True, "Importazione simulata completata."
+             log.warning("Import CSV non disponibile su Linux (Richiede Veyon CLI).")
+             return False, "Operazione disponibile solo su Windows con Veyon."
 
         try:
             # 1. Clear se richiesto

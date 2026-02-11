@@ -9,7 +9,7 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.2.0**
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.0**
 
 ## Caratteristiche Principali
 
@@ -19,7 +19,9 @@ Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione
 - **Gestione Veyon & CSV**: 
     - Import/Export configurazione PC.
     - Template CSV scaricabile per facilitare l'importazione.
-- **Cross-Platform**: Sviluppato per girare su Windows 10/11.
+- **Cross-Platform**: Sviluppato su Linux, destinato a Windows 10/11.
+    - **Nota Dev**: Su Linux l'app parte in modalità "No-Op" (nessuna modifica al sistema, dashboard vuota se non c'è Veyon).
+- **Sincronizzazione Veyon**: La lista dei PC viene letta all'avvio. Se si aggiungono PC su Veyon, è necessario riavviare l'applicazione per vederli.
 - **Nessuna installazione server**: Funziona peer-to-peer (Docente -> Veyon -> Studenti).
 
 ## Installazione (Sviluppo)

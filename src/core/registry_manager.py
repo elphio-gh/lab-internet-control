@@ -131,29 +131,26 @@ class WindowsRegistryManager(BaseRegistryManager):
             log.error(f"Errore rimozione RunOnce: {e}")
 
 
-class LinuxMockRegistryManager(BaseRegistryManager):
+class LinuxNoOpRegistryManager(BaseRegistryManager):
     """
-    Implementazione Mock per Linux.
-    Scrive solo nei log cosa 'farebbe' su Windows.
-    Utile per sviluppare la UI su Linux senza rompere nulla.
+    Implementazione simulata per Linux.
+    Non esegue nessuna operazione reale sul registro.
+    Utile per sviluppare la UI su Linux senza errori.
     """
     def enable_proxy(self, proxy_address="127.0.0.1:6666"):
-        log.warning(f"[MOCK WINDOWS] Abilitazione Proxy: {proxy_address}")
-        log.warning("[MOCK WINDOWS] Notifica sistema inviata.")
+        log.info(f"[NO-OP WINDOWS] Abilitazione Proxy: {proxy_address} (Simulato)")
 
     def disable_proxy(self):
-        log.warning("[MOCK WINDOWS] Disabilitazione Proxy (Internet Libero).")
-        log.warning("[MOCK WINDOWS] Notifica sistema inviata.")
+        log.info("[NO-OP WINDOWS] Disabilitazione Proxy (Internet Libero) (Simulato)")
 
     def set_pac_url(self, pac_url):
-        log.warning(f"[MOCK WINDOWS] Impostazione PAC URL: {pac_url}")
-        log.warning("[MOCK WINDOWS] Notifica sistema inviata.")
+        log.info(f"[NO-OP WINDOWS] Impostazione PAC URL: {pac_url} (Simulato)")
 
     def set_run_once_restore(self):
-        log.warning("[MOCK WINDOWS] Aggiunta chiave RunOnce per sblocco al riavvio.")
+        log.info("[NO-OP WINDOWS] Aggiunta chiave RunOnce per sblocco al riavvio (Simulato)")
 
     def remove_run_once_restore(self):
-        log.warning("[MOCK WINDOWS] Rimossa chiave RunOnce.")
+        log.info("[NO-OP WINDOWS] Rimossa chiave RunOnce (Simulato)")
 
 
 # 🎓 DIDATTICA: Factory method per restituire la classe giusta in base al sistema operativo.
@@ -161,5 +158,5 @@ def get_registry_manager():
     if sys.platform == "win32":
         return WindowsRegistryManager()
     else:
-        log.info("Siamo su Linux/Mac. Uso il RegistryManager simulato.")
-        return LinuxMockRegistryManager()
+        log.info("Siamo su Linux/Mac. Uso il RegistryManager No-Op.")
+        return LinuxNoOpRegistryManager()

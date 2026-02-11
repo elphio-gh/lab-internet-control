@@ -101,5 +101,40 @@ class CommandDispatcher:
         for host in hosts:
             self._execute_remote_command(host, cmd)
 
+    def scan_status(self, hosts, udp_port=5005):
+        """
+        Invia un comando PowerShell ai client per fargli inviare lo stato via UDP.
+        Agent-less: Sfrutta Veyon per eseguire lo script al volo.
+        """
+        # Script PowerShell compattato
+        # 1. Legge stato Proxy e PAC
+        # 2. Ottiene Utente corrente
+        # 3. Invia UDP Broadcast con formato HOST|STATUS|USER
+        
+        ps_script = f"""
+$u=[System.Security.Principal.WindowsIdentity]::GetCurrent().Name;
+$s='ON';
+$p='HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings';
+if((Get-ItemProperty -Path $p -Name ProxyEnable -ErrorAction SilentlyContinue).ProxyEnable -eq 1){{$s='OFF'}};
+if((Get-ItemProperty -Path $p -Name AutoConfigURL -ErrorAction SilentlyContinue).AutoConfigURL){{$s='WL'}};
+$c=New-Object System.Net.Sockets.UdpClient;
+$b=[Text.Encoding]::UTF8.GetBytes(\"$env:COMPUTERNAME|$s|$u\");
+$c.Connect('255.255.255.255',{udp_port});
+$c.Send($b,$b.Length);
+"""
+        # Rimuoviamo newlines per passarlo come argomento singolo
+        ps_oneliner = ps_script.replace('\\n', ' ').replace('  ', ' ')
+        
+        # Comando CMD che invoca PowerShell
+        full_cmd = f'powershell -WindowStyle Hidden -Command "{ps_oneliner}"'
+        
+        # Esecuzione
+        if platform.system() != "Windows":
+             log.info(f"[NO-OP SCAN] System is not Windows. Skipping remote command for {len(hosts)} hosts.")
+             return
+
+        for host in hosts:
+            self._execute_remote_command(host, full_cmd)
+
 # Istanza globale
 dispatcher = CommandDispatcher()

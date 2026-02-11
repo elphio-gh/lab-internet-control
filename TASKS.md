@@ -27,3 +27,7 @@
     - [x] Creazione `src/utils/version.py`
     - [x] Tab "About" con Licenza e Autore
     - [x] Versione dinamica nella Sidebar
+- [x] Rimuovere logiche Mockup (Modalità Reale)
+    - [x] Core: Rimossa generazione host fake in `VeyonManager`
+    - [x] Network: Rimossa simulazione UDP in `CommandDispatcher`
+    - [x] Registry: Rinominato `LinuxMockRegistryManager` in `LinuxNoOpRegistryManager`

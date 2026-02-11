@@ -14,7 +14,8 @@ class Config:
         "http_port": 8080,
         "default_mode": "restart", # "restart" o "manual"
         "whitelist": ["google.com", "wikipedia.org", "classroom.google.com"],
-        "veyon_cli_path": "C:\\Program Files\\Veyon\\veyon-cli.exe"
+        "veyon_cli_path": "C:\\Program Files\\Veyon\\veyon-cli.exe",
+        "last_state": "ON"
     }
 
     def __init__(self, config_file="config.json"):

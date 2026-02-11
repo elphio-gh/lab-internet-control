@@ -37,8 +37,10 @@ class App(ctk.CTk):
         self.lbl_title.pack(pady=20)
         
         # [NEW] Status Panel
-        self.lbl_status = ctk.CTkLabel(self.sidebar, text="UNKNOWN", font=("Arial", 14, "bold"), text_color="gray")
-        self.lbl_status.pack(pady=(0, 20))
+        self.lbl_status_main = ctk.CTkLabel(self.sidebar, text="UNKNOWN", font=("Arial", 16, "bold"), text_color="gray")
+        self.lbl_status_main.pack(pady=(0, 5))
+        self.lbl_status_detail = ctk.CTkLabel(self.sidebar, text="", font=("Arial", 12), text_color="gray70")
+        self.lbl_status_detail.pack(pady=(0, 20))
         
         # Pulsante Dashboard (per tornare alla vista PC)
         self.btn_dashboard = ctk.CTkButton(self.sidebar, text="💻 Dashboard", command=self.show_classroom, fg_color="transparent", border_width=1)
@@ -133,29 +135,58 @@ class App(ctk.CTk):
         # Stato iniziale
         self.pc_widgets = {}
         self.whitelist_active = False
+        self.is_blocked = False # [NEW] State tracking
         
-        # Inizializza stato UI
-        self.update_gui_status("ON") # Default presumiamo sbloccato o unknown
+        # Inizializza stato UI ripristinando l'ultimo stato noto
+        last_state = config.get("last_state", "ON")
+        self.update_gui_status(last_state)
+        
+        # [NEW] Gestione Chiusura App
+        self.protocol("WM_DELETE_WINDOW", self.on_close)
+        
         self.show_classroom()
+        
+        # [NEW] Restore & Enforce: Se eravamo bloccati/WL, riapplichiamo il comando ai PC trovati
+        # per garantire che lo stato UI corrisponda alla realtà (es. PC 11-20 accesi ora)
+        if last_state != "ON":
+            self.after(500, lambda: self.enforce_state(last_state))
+
+        # [NEW] Avvio Scansione Periodica Stato (Agent-less)
+        self.start_status_scan()
 
     def update_gui_status(self, mode):
         """
         Aggiorna l'indicatore di stato globale e i pulsanti.
         mode: "ON" (Sbloccato), "OFF" (Bloccato), "WL" (Whitelist)
         """
+        # [NEW] Persistenza stato
+        config.set("last_state", mode)
+
         if mode == "ON":
-            self.lbl_status.configure(text="✅ INTERNET ON", text_color="#00FF00")
+            self.lbl_status_main.configure(text=i18n.t("STATUS_ON"), text_color="#00FF00")
+            self.lbl_status_detail.configure(text="")
             self.btn_whitelist.configure(text=i18n.t("WL_ON"), fg_color="#CCCC00", hover_color="#AAAA00") 
             self.whitelist_active = False
+            self.is_blocked = False
         elif mode == "OFF":
-            self.lbl_status.configure(text="⛔ BLOCKED", text_color="#FF0000")
+            self.lbl_status_main.configure(text=i18n.t("STATUS_OFF"), text_color="#FF0000")
+            # Controlla modalità attuale per dettaglio
+            block_mode = config.get("block_mode")
+            if block_mode == "manual":
+                self.lbl_status_detail.configure(text=i18n.t("STATUS_DETAIL_MANUAL"))
+            else:
+                self.lbl_status_detail.configure(text=i18n.t("STATUS_DETAIL_RESTART"))
+            
             self.btn_whitelist.configure(text=i18n.t("WL_ON"), fg_color="#CCCC00", hover_color="#AAAA00")
             self.whitelist_active = False
+            self.is_blocked = True
         elif mode == "WL":
-            self.lbl_status.configure(text="🛡️ WHITELIST", text_color="#FFFF00")
+            self.lbl_status_main.configure(text=i18n.t("STATUS_WL"), text_color="#FFFF00")
+            self.lbl_status_detail.configure(text="") # O magari "Accesso Limitato"
             # Pulsante Whitelist diventa "Disattiva" e cambia stile
             self.btn_whitelist.configure(text=i18n.t("WL_OFF"), fg_color="#D4AF37", hover_color="#B5962F") # Gold/Dark Yellow
             self.whitelist_active = True
+            self.is_blocked = True # Tecnicamente è bloccato (in whitelist)
 
     def show_notification(self, message, color="green", text_color="white"):
         """Mostra una notifica temporanea (Toast) senza bloccare l'UI."""
@@ -227,11 +258,42 @@ class App(ctk.CTk):
         self.btn_whitelist.configure(text=i18n.t("WL_ON"))
         
         hosts = list(self.pc_widgets.keys())
-        # Leggiamo dal config (che è aggiornato dal selettore)
         mode = config.get("block_mode") or "restart"
         dispatcher.block_internet(hosts, mode=mode)
-        self.show_notification(i18n.t("MSG_BLOCK").format(len(hosts)), color="#CC0000")
+        
+        # Notifica specifica per modalità
+        msg = i18n.t("MSG_BLOCK_RESTART") if mode == "restart" else i18n.t("MSG_BLOCK_MANUAL")
+        self.show_notification(msg, color="#CC0000")
+        
         self.update_gui_status("OFF")
+
+    def on_close(self):
+        """Gestisce la chiusura dell'applicazione con controlli di sicurezza."""
+        if self.whitelist_active:
+            # Whitelist attiva -> Accesso parziale
+            answer = messagebox.askyesno(
+                i18n.t("EXIT_TITLE"),
+                i18n.t("EXIT_MSG_WL")
+            )
+            if answer:
+                self.action_unblock() # Sblocca tutto prima di uscire
+        
+        elif self.is_blocked: # [NEW] Controllo tramite variabile di stato
+            # Blocco attivo -> Controlla modalità
+            mode = config.get("block_mode")
+            if mode == "manual":
+                # Blocco Manuale (Permanente)
+                answer = messagebox.askyesno(i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_MANUAL"))
+                if answer:
+                    self.action_unblock()
+            else:
+                # Blocco Restart (RunOnce) -> Si sblocca al riavvio, ma chiediamo lo stesso
+                answer = messagebox.askyesno(i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_RESTART"))
+                if answer:
+                    self.action_unblock()
+        
+        # Procedi alla chiusura
+        self.destroy()
 
     def action_unblock(self):
         if not self.pc_widgets: return
@@ -284,3 +346,20 @@ class App(ctk.CTk):
             if name.lower() == hostname.lower():
                 widget.update_status(status, user)
                 return
+
+    def start_status_scan(self):
+        """
+        Loop periodico: "Punzecchia" i PC via Veyon per farsi mandare lo stato via UDP.
+        Non richiede installazione agenti -> Sfrutta PowerShell remoto.
+        """
+        if self.pc_widgets:
+            hosts = list(self.pc_widgets.keys())
+            # Esegui scansione in un thread separato per non bloccare UI mentre itera i comandi Veyon?
+            # dispatcher.scan_status è veloce (fire and forget), ma se ci sono tanti host meglio thread.
+            # Per ora lo chiamiamo direttamente, dispatcher usa subprocess.
+            
+            # Lanciamo in background usando .after per non bloccare
+            self.after(100, lambda: dispatcher.scan_status(hosts, config.get("udp_port")))
+            
+        # Ripeti ogni 10 secondi
+        self.after(10000, self.start_status_scan)
