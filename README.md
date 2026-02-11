@@ -81,6 +81,11 @@ Le configurazioni e i log degli utenti verranno salvati in `%LOCALAPPDATA%\LabIn
 
 Le configurazioni e i log degli utenti verranno salvati in `%LOCALAPPDATA%\LabInternetControl` per garantire la compatibilità con i permessi di sistema.
 
+## Principi di Design
+-   **Zero Code Burden**: Il codice deve essere gestito interamente dallo sviluppatore.
+-   **No Popups**: L'applicazione non deve mai interrompere l'utente con popup invasivi (eccetto conferme critiche esplicite).
+-   **Cross-Platform**: Sviluppo su Linux, Esecuzione su Windows.
+
 ## Licenza
 
 **MIT License**

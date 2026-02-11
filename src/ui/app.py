@@ -161,30 +161,6 @@ class App(ctk.CTk):
         # [NEW] Avvio Scansione Periodica Stato (Agent-less)
         self.start_status_scan()
 
-        # [NEW] Controllo Aggiornamenti all'avvio (dopo 2 secondi per non rallentare start)
-        self.after(2000, self.check_updates)
-
-    def check_updates(self):
-        """Controlla se ci sono aggiornamenti GitHub in background."""
-        import threading
-        def _check():
-            has_update, tag, url = self.update_manager.check_for_updates()
-            if has_update:
-                self.after(0, lambda: self.show_update_button(url, tag))
-        
-        threading.Thread(target=_check, daemon=True).start()
-
-    def show_update_button(self, url, tag):
-        """Mostra il pulsante di aggiornamento nella sidebar."""
-        self.btn_update.configure(text=f"⬇️ Update {tag}", command=lambda: self.update_manager.open_download_page(url))
-        self.btn_update.pack(pady=(0, 10), padx=20, fill="x", before=self.lbl_status_main)
-        # Lampeggio o notifica toast
-        self.show_notification(i18n.t("MSG_UPDATE_AVAIL"), color="#2CC02C")
-
-    def open_update(self):
-        """Fallback command (sovrascritto dinamicamente)."""
-        pass
-
     def update_gui_status(self, mode):
         """
         Aggiorna l'indicatore di stato globale e i pulsanti.

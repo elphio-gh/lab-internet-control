@@ -228,11 +228,9 @@ class SettingsFrame(ctk.CTkFrame):
             messagebox.showinfo("Template CSV", i18n.t("MSG_TEMPLATE_SAVED"))
         else:
             messagebox.showerror("Errore", msg)
-        else:
-            messagebox.showerror("Errore", msg)
 
     def manual_check_updates(self):
-        """Controlla aggiornamenti su richiesta utente."""
+        """Controlla aggiornamenti su richiesta utente (No Popup)."""
         self.btn_check_updates.configure(state="disabled", text="Controllo in corso...")
         
         import threading
@@ -246,8 +244,11 @@ class SettingsFrame(ctk.CTkFrame):
         self.btn_check_updates.configure(state="normal", text="Controlla Aggiornamenti")
         
         if has_update:
-            answer = messagebox.askyesno("Aggiornamento Disponibile", f"È disponibile una nuova versione: {tag}\nVuoi scaricarla ora?")
-            if answer:
-                self.update_manager.open_download_page(url)
+            # Niente Popup -> Cambia testo pulsante o aggiungi label sotto
+            self.btn_check_updates.configure(text=f"Aggiorna a {tag} ⬇️", fg_color="#2CC02C", command=lambda: self.update_manager.open_download_page(url))
         else:
-            messagebox.showinfo("Aggiornamento", "Nessun aggiornamento disponibile.\nStai usando l'ultima versione.")
+            # Niente Popup -> Feedback visuale temporaneo sul bottone
+            original_text = "Controlla Aggiornamenti"
+            self.btn_check_updates.configure(text="✅ Nessun aggiornamento", fg_color="gray")
+            self.after(3000, lambda: self.btn_check_updates.configure(text=original_text, fg_color=("summary_theme", "blue"))) # Reset (colore default ctk è 'blue' o theme)
+
