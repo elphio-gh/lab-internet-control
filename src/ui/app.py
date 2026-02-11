@@ -3,6 +3,7 @@ import customtkinter as ctk
 import tkinter as tk
 from tkinter import messagebox
 from src.ui.widgets import PCWidget, ActionButton, PCRow
+from src.ui.dialogs import ExitDialog # [NEW]
 from src.ui.settings import SettingsFrame  # [NEW]
 from src.utils.config import config
 from src.utils.i18n import i18n  # [NEW]
@@ -282,14 +283,15 @@ class App(ctk.CTk):
         
         self.update_gui_status("OFF")
 
+
     def on_close(self):
         """Gestisce la chiusura dell'applicazione con controlli di sicurezza."""
         if self.whitelist_active:
             # Whitelist attiva -> Accesso parziale
-            answer = messagebox.askyesno(
-                i18n.t("EXIT_TITLE"),
-                i18n.t("EXIT_MSG_WL")
-            )
+            dialog = ExitDialog(self, i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_WL"))
+            answer = dialog.show()
+            
+            if answer is None: return # [FIX] Annulla uscita
             if answer:
                 self.action_unblock() # Sblocca tutto prima di uscire
         
@@ -298,12 +300,18 @@ class App(ctk.CTk):
             mode = config.get("block_mode")
             if mode == "manual":
                 # Blocco Manuale (Permanente)
-                answer = messagebox.askyesno(i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_MANUAL"))
+                dialog = ExitDialog(self, i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_MANUAL"))
+                answer = dialog.show()
+                
+                if answer is None: return # [FIX] Annulla uscita
                 if answer:
                     self.action_unblock()
             else:
                 # Blocco Restart (RunOnce) -> Si sblocca al riavvio, ma chiediamo lo stesso
-                answer = messagebox.askyesno(i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_RESTART"))
+                dialog = ExitDialog(self, i18n.t("EXIT_TITLE"), i18n.t("EXIT_MSG_RESTART"))
+                answer = dialog.show()
+                
+                if answer is None: return # [FIX] Annulla uscita
                 if answer:
                     self.action_unblock()
         
