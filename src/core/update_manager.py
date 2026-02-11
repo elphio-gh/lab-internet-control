@@ -39,7 +39,17 @@ class UpdateManager:
                 
                 if version.parse(clean_latest) > version.parse(clean_current):
                     log.info(f"Nuovo aggiornamento trovato: {latest_tag}")
-                    return True, latest_tag, html_url
+                    
+                    # [NEW] Cerca asset .exe per download diretto
+                    download_url = html_url
+                    assets = data.get("assets", [])
+                    for asset in assets:
+                        name = asset.get("name", "").lower()
+                        if name.endswith(".exe"):
+                            download_url = asset.get("browser_download_url")
+                            break
+                            
+                    return True, latest_tag, download_url
                 else:
                     log.info("Nessun aggiornamento disponibile.")
                     return False, latest_tag, html_url
@@ -55,3 +65,66 @@ class UpdateManager:
         """Apre la pagina di download nel browser predefinito."""
         if url:
             webbrowser.open(url)
+
+    def download_installer(self, url, progress_callback=None):
+        """
+        Scarica l'installer dalla URL fornita.
+        progress_callback(float): funzione chiamata con progresso 0.0-1.0
+        Ritorna il path del file scaricato o None in caso di errore.
+        """
+        import os
+        import tempfile
+        try:
+            log.info(f"Avvio download aggiornamento da: {url}")
+            response = requests.get(url, stream=True, timeout=10)
+            total_size = int(response.headers.get('content-length', 0))
+            
+            # Cartella Temp
+            temp_dir = tempfile.gettempdir()
+            # Nome file (o default se non deducibile)
+            file_name = url.split("/")[-1]
+            if not file_name.endswith(".exe"):
+                file_name = "LabInternetControl_Update.exe"
+                
+            file_path = os.path.join(temp_dir, file_name)
+            
+            downloaded = 0
+            with open(file_path, "wb") as f:
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+                        downloaded += len(chunk)
+                        if progress_callback and total_size > 0:
+                            progress_callback(downloaded / total_size)
+            
+            log.info(f"Download completato: {file_path}")
+            return file_path
+            
+        except Exception as e:
+            log.error(f"Errore download aggiornamento: {e}")
+            return None
+
+    def run_installer(self, file_path):
+        """
+        Lancia l'installer e chiude l'applicazione corrente.
+        """
+        import subprocess
+        import sys
+        import os
+        import platform
+        
+        try:
+            log.info(f"Avvio installer: {file_path}")
+            
+            if platform.system() == "Windows":
+                os.startfile(file_path)
+            else:
+                # Fallback Linux (magari chmod +x)
+                subprocess.Popen(["xdg-open", file_path])
+            
+            # Chiude l'applicazione
+            sys.exit(0)
+            
+        except Exception as e:
+            log.error(f"Errore avvio installer: {e}")
+

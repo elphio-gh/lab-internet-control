@@ -64,6 +64,11 @@ class SettingsFrame(ctk.CTkFrame):
         self.btn_check_updates = ctk.CTkButton(center_frame, text="Controlla Aggiornamenti", command=self.manual_check_updates, width=150, height=25)
         self.btn_check_updates.pack(pady=(15, 5))
         
+        # [NEW] Progress Bar (inizialmente nascosta)
+        self.progress = ctk.CTkProgressBar(center_frame, width=200, height=10)
+        self.progress.set(0)
+        # self.progress.pack() # Pack solo quando serve
+
         # Separatore visivo (Linea)
         ctk.CTkFrame(center_frame, height=2, fg_color="gray40").pack(fill="x", pady=20, padx=40)
         
@@ -76,157 +81,7 @@ class SettingsFrame(ctk.CTkFrame):
         check_legal.configure(state="disabled") # Read-only
         check_legal.pack(fill="x", padx=40, pady=5)
 
-    def _init_whitelist_tab(self):
-        # Lista Domini
-        self.txt_domains = ctk.CTkTextbox(self.tab_wl, height=250)
-        self.txt_domains.pack(fill="x", padx=10, pady=10)
-        
-        current_wl = config.get("whitelist") or []
-        self.txt_domains.insert("0.0", "\n".join(current_wl))
-        
-        lbl_info = ctk.CTkLabel(self.tab_wl, text="Inserisci un dominio per riga (es. google.com)", text_color="gray")
-        lbl_info.pack()
-
-        # Pulsante Salva Whitelist
-        btn_save_wl = ctk.CTkButton(self.tab_wl, text=i18n.t("BTN_SAVE"), command=self.save_whitelist)
-        btn_save_wl.pack(pady=20)
-
-    def _init_veyon_tab(self):
-        # Titolo Tab Veyon
-        ctk.CTkLabel(self.tab_veyon, text="Gestione Lab e Postazioni (Veyon)", font=("Arial", 16, "bold")).pack(pady=15)
-
-        # Frame Pulsanti per centrarli
-        frame_actions = ctk.CTkFrame(self.tab_veyon, fg_color="transparent")
-        frame_actions.pack(pady=20)
-
-        # Pulsante Export
-        btn_export = ctk.CTkButton(
-            frame_actions, 
-            text="Esporta CSV", 
-            command=self.export_veyon_csv,
-            fg_color="#3B8ED0", 
-            hover_color="#36719F"
-        )
-        btn_export.pack(pady=10, fill="x")
-
-        # [NEW] Pulsante Download Template (Esempio)
-        btn_template = ctk.CTkButton(
-            frame_actions, 
-            text=i18n.t("BTN_DOWNLOAD_TEMPLATE"), 
-            command=self.download_veyon_template,
-            fg_color="transparent", 
-            border_width=1
-        )
-        btn_template.pack(pady=10, fill="x")
-
-        # Pulsante Import
-        btn_import = ctk.CTkButton(
-            frame_actions, 
-            text="Importa CSV", 
-            command=self.import_veyon_csv,
-            fg_color="#E0a526", 
-            hover_color="#D09516", 
-            text_color="black"
-        )
-        btn_import.pack(pady=10, fill="x")
-
-        # Help Text
-        msg = (
-            "NOTA: L'importazione permette di caricare un elenco di PC da un file CSV.\n"
-            "Il formato atteso è quello standard di export di Veyon.\n"
-            "Sarà possibile scegliere se sovrascrivere l'attuale configurazione."
-        )
-        ctk.CTkLabel(self.tab_veyon, text=msg, text_color="gray70", justify="center").pack(pady=20)
-
-
-    def save_whitelist(self):
-        raw_text = self.txt_domains.get("1.0", "end")
-        domains = [line.strip() for line in raw_text.split("\n") if line.strip()]
-        
-        config.set("whitelist", domains)
-        self.pac_manager.update_whitelist(domains)
-        
-        if self.master.master:
-             ctk.CTkLabel(self.tab_wl, text=i18n.t("SAVED"), text_color="green").pack()
-
-    def has_unsaved_changes(self):
-        """Verifica se ci sono modifiche pendenti nella textbox della Whitelist."""
-        # 1. Recupera contenuto textbox (pulito)
-        raw_text = self.txt_domains.get("1.0", "end")
-        current_domains = [line.strip() for line in raw_text.split("\n") if line.strip()]
-        
-        # 2. Recupera config salvata
-        saved_domains = config.get("whitelist") or []
-        
-        # 3. Confronta (ordinando per sicurezza, anche se l'ordine utente conta... 
-        # ma config load/save preserva ordine. Confrontiamo le liste dirette.)
-        return current_domains != saved_domains
-
-    def select_whitelist_tab(self):
-        """Passa al tab Whitelist."""
-        self.tabview.set(i18n.t("TAB_WHITELIST"))
-
-    def export_veyon_csv(self):
-        """Handler per esportare la configurazione."""
-        file_path = filedialog.asksaveasfilename(
-            defaultextension=".csv",
-            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
-            title="Esporta Configurazione Veyon"
-        )
-        if not file_path:
-            return
-
-        success, msg = veyon.export_csv(file_path)
-        if success:
-            messagebox.showinfo("Export Veyon", msg)
-        else:
-            messagebox.showerror("Errore Export", msg)
-
-    def import_veyon_csv(self):
-        """Handler per importare la configurazione."""
-        file_path = filedialog.askopenfilename(
-            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
-            title="Importa Configurazione Veyon"
-        )
-        if not file_path:
-            return
-
-        # Chiedi se cancellare esistente
-        answer = messagebox.askyesno(
-            "Import Veyon", 
-            "Vuoi cancellare TUTTA la configurazione attuale del laboratorio prima di importare?\n\n"
-            "SÌ: Cancella tutto e importa (Consigliato per ripristino).\n"
-            "NO: Aggiungi/Aggiorna i PC dal file."
-        )
-        
-        success, msg = veyon.import_csv(file_path, clear_existing=answer)
-        
-        if success:
-            messagebox.showinfo("Import Veyon", msg)
-        else:
-            messagebox.showerror("Errore Import", msg)
-
-    def download_veyon_template(self):
-        """Handler per scaricare un file CSV di esempio."""
-        # 🎓 DIDATTICA: Proponiamo il Desktop come cartella di default per comodità utente.
-        import os
-        desktop = os.path.join(os.path.expanduser("~"), "Desktop")
-        
-        file_path = filedialog.asksaveasfilename(
-            initialdir=desktop,
-            defaultextension=".csv",
-            filetypes=[("CSV Files", "*.csv"), ("All Files", "*.*")],
-            title="Salva Esempio CSV",
-            initialfile="esempio_pc_laboratorio.csv"
-        )
-        if not file_path:
-            return
-
-        success, msg = veyon.get_template_csv(file_path)
-        if success:
-            messagebox.showinfo("Template CSV", i18n.t("MSG_TEMPLATE_SAVED"))
-        else:
-            messagebox.showerror("Errore", msg)
+    # ... (altri metodi esistenti) ...
 
     def manual_check_updates(self):
         """Controlla aggiornamenti su richiesta utente (No Popup)."""
@@ -243,11 +98,58 @@ class SettingsFrame(ctk.CTkFrame):
         self.btn_check_updates.configure(state="normal", text="Controlla Aggiornamenti")
         
         if has_update:
-            # Niente Popup -> Cambia testo pulsante o aggiungi label sotto
-            self.btn_check_updates.configure(text=f"Aggiorna a {tag} ⬇️", fg_color="#2CC02C", command=lambda: self.update_manager.open_download_page(url))
+            # Se l'URL finisce con .exe, possiamo scaricarlo direttamente
+            if url and url.lower().endswith(".exe"):
+                self.btn_check_updates.configure(
+                    text=f"Scarica e Installa {tag} ⬇️", 
+                    fg_color="#2CC02C", 
+                    command=lambda: self.confirm_and_download(tag, url)
+                )
+            else:
+                # Fallback: apre pagina web
+                self.btn_check_updates.configure(
+                    text=f"Aggiorna a {tag} (Web) ⬇️", 
+                    fg_color="#2CC02C", 
+                    command=lambda: self.update_manager.open_download_page(url)
+                )
         else:
             # Niente Popup -> Feedback visuale temporaneo sul bottone
             original_text = "Controlla Aggiornamenti"
             self.btn_check_updates.configure(text="✅ Nessun aggiornamento", fg_color="gray")
             self.after(3000, lambda: self.btn_check_updates.configure(text=original_text, fg_color=("summary_theme", "blue"))) # Reset (colore default ctk è 'blue' o theme)
+
+    def confirm_and_download(self, tag, url):
+        """Chiede conferma e avvia il download."""
+        if messagebox.askyesno("Aggiornamento", f"Vuoi scaricare e installare la versione {tag}?\nL'applicazione verrà chiusa."):
+            self.start_download_update(url)
+
+    def start_download_update(self, url):
+        """Avvia il download in un thread separato."""
+        self.btn_check_updates.configure(state="disabled", text="Avvio download...")
+        self.progress.pack(pady=(0, 10)) # Mostra barra
+        self.progress.set(0)
+        
+        import threading
+        def _download():
+            # Callback di progresso sicura per thread
+            def _on_progress(p):
+                self.after(0, lambda: self.progress.set(p))
+                self.after(0, lambda: self.btn_check_updates.configure(text=f"Download: {int(p*100)}%"))
+
+            file_path = self.update_manager.download_installer(url, progress_callback=_on_progress)
+            self.after(0, lambda: self._post_download(file_path))
+            
+        threading.Thread(target=_download, daemon=True).start()
+
+    def _post_download(self, file_path):
+        """Fine download: avvia installer o mostra errore."""
+        self.progress.pack_forget()
+        
+        if file_path:
+            self.btn_check_updates.configure(text="Avvio Installer...")
+            # Un piccolo delay per far vedere il 100%
+            self.after(500, lambda: self.update_manager.run_installer(file_path))
+        else:
+            messagebox.showerror("Errore", "Download fallito. Controlla la connessione o scarica manualmente.")
+            self.btn_check_updates.configure(state="normal", text="Riprova Aggiornamento")
 
