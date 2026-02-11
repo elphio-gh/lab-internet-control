@@ -12,6 +12,13 @@ class PACManager:
     def __init__(self, whitelist=None):
         self.whitelist = whitelist if whitelist else []
         self.pac_file_path = None
+        self.mode = "RESTRICTED" # "RESTRICTED" (Default) o "UNLOCKED" (Internet Libero)
+
+    def set_mode(self, mode):
+        """Imposta la modalità di generazione del PAC."""
+        if mode in ["RESTRICTED", "UNLOCKED"]:
+            self.mode = mode
+            log.info(f"PAC Manager mode set to: {self.mode}")
 
     def update_whitelist(self, new_whitelist):
         """Aggiorna la lista dei siti consentiti."""
@@ -26,6 +33,12 @@ class PACManager:
         # "FindProxyForURL" è la funzione standard che i browser chiamano per ogni richiesta.
         script = "function FindProxyForURL(url, host) {\n"
         
+        # 🎓 DIDATTICA: Se siamo in modalità SBLOCCATA, tutto è diretto.
+        if self.mode == "UNLOCKED":
+             script += '    return "DIRECT";\n'
+             script += "}\n"
+             return script
+
         # 🎓 DIDATTICA: Aggiungiamo le eccezioni per la whitelist.
         # shExpMatch confronta l'host con un pattern (es. "*.google.com").
         for domain in self.whitelist:

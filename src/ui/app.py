@@ -367,6 +367,10 @@ class App(ctk.CTk):
         Loop periodico: "Punzecchia" i PC via Veyon per farsi mandare lo stato via UDP.
         Non richiede installazione agenti -> Sfrutta PowerShell remoto.
         """
+        if not self.pc_widgets:
+            # Se la lista è vuota (es. simulazione avviata dopo), riproviamo a caricare
+            self.load_pc_table()
+            
         if self.pc_widgets:
             hosts = list(self.pc_widgets.keys())
             # Esegui scansione in un thread separato per non bloccare UI mentre itera i comandi Veyon?

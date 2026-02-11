@@ -12,6 +12,11 @@ class CommandDispatcher:
 
     def __init__(self):
         self.veyon_cli = config.get("veyon_cli_path")
+        self.pac_manager = None
+
+    def set_pac_manager(self, pac_manager):
+        """Inietta l'istanza di PACManager per aggiornare lo stato."""
+        self.pac_manager = pac_manager
 
     def _execute_remote_command(self, host, command):
         """
@@ -52,6 +57,10 @@ class CommandDispatcher:
         :param mode: "restart" (default) imposta RunOnce per sblocco, "manual" no.
         """
         
+        # [NEW] Aggiorna stato PAC Manager
+        if self.pac_manager:
+            self.pac_manager.set_mode("RESTRICTED")
+
         # 1. Comando REG per attivare Proxy Fake
         cmd_block = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyServer /t REG_SZ /d "127.0.0.1:6666" /f && reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 1 /f'
         
@@ -77,6 +86,11 @@ class CommandDispatcher:
 
     def unblock_internet(self, hosts):
         """Sblocca internet."""
+        
+        # [NEW] Aggiorna stato PAC Manager
+        if self.pac_manager:
+            self.pac_manager.set_mode("UNLOCKED")
+
         # Disabilita Proxy Manuale
         cmd_proxy = 'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v ProxyEnable /t REG_DWORD /d 0 /f'
         # Rimuovi PAC se presente
@@ -90,6 +104,11 @@ class CommandDispatcher:
 
     def apply_whitelist(self, hosts, pac_url):
         """Applica la whitelist tramite PAC."""
+        
+        # [NEW] Aggiorna stato PAC Manager (Whitelist è comunque Restricted mode nel PAC)
+        if self.pac_manager:
+            self.pac_manager.set_mode("RESTRICTED")
+
         # 1. Imposta URL autoconfig
         cmd_pac = f'reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Internet Settings" /v AutoConfigURL /t REG_SZ /d "{pac_url}" /f'
         

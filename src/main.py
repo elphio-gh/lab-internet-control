@@ -13,10 +13,13 @@ from src.utils.logger import log
 def main():
     log.info("Avvio Lab Internet Control...")
 
-    # 1. Inizializziamo il PAC Manager (whitelist default)
+    # 1. Inizializziamo il PAC Manager
     pac_manager = PACManager()
     
-    # 2. Avviamo il server HTTP per il PAC
+    # 2. Colleghiamo il dispatcher al PAC Manager per sync stato
+    dispatcher.set_pac_manager(pac_manager)
+
+    # 3. Avviamo il server HTTP per il PAC
     http_server = PACHTTPServer(pac_manager)
     http_server.start()
     
