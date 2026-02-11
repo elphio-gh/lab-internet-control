@@ -4,6 +4,7 @@ from src.utils.config import config
 from src.utils.i18n import i18n
 from src.core.pac_manager import PACManager
 from src.core.veyon_manager import veyon
+from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION, APP_AUTHOR, APP_LICENSE, APP_COPYRIGHT, APP_REPO
 import webbrowser
 
@@ -13,7 +14,9 @@ class SettingsFrame(ctk.CTkFrame):
     """
     def __init__(self, master, pac_manager, **kwargs):
         super().__init__(master, **kwargs)
+        super().__init__(master, **kwargs)
         self.pac_manager = pac_manager
+        self.update_manager = UpdateManager() # [NEW] Istanza locale o passata? Meglio nuova tanto è leggera
         
         # Titolo
         lbl_title = ctk.CTkLabel(self, text=i18n.t("SETTINGS"), font=("Arial", 20, "bold"))
@@ -57,6 +60,10 @@ class SettingsFrame(ctk.CTkFrame):
         link_lbl = ctk.CTkLabel(center_frame, text="GitHub Repository", font=("Arial", 11, "underline"), text_color="#3B8ED0", cursor="hand2")
         link_lbl.pack(pady=5)
         link_lbl.bind("<Button-1>", lambda e: webbrowser.open(APP_REPO))
+        
+        # [NEW] Pulsante Controllo Aggiornamenti Manuale
+        self.btn_check_updates = ctk.CTkButton(center_frame, text="Controlla Aggiornamenti", command=self.manual_check_updates, width=150, height=25)
+        self.btn_check_updates.pack(pady=(15, 5))
         
         # Separatore visivo (Linea)
         ctk.CTkFrame(center_frame, height=2, fg_color="gray40").pack(fill="x", pady=20, padx=40)
@@ -221,3 +228,26 @@ class SettingsFrame(ctk.CTkFrame):
             messagebox.showinfo("Template CSV", i18n.t("MSG_TEMPLATE_SAVED"))
         else:
             messagebox.showerror("Errore", msg)
+        else:
+            messagebox.showerror("Errore", msg)
+
+    def manual_check_updates(self):
+        """Controlla aggiornamenti su richiesta utente."""
+        self.btn_check_updates.configure(state="disabled", text="Controllo in corso...")
+        
+        import threading
+        def _check():
+            has_update, tag, url = self.update_manager.check_for_updates()
+            self.after(0, lambda: self._post_manual_check(has_update, tag, url))
+            
+        threading.Thread(target=_check, daemon=True).start()
+
+    def _post_manual_check(self, has_update, tag, url):
+        self.btn_check_updates.configure(state="normal", text="Controlla Aggiornamenti")
+        
+        if has_update:
+            answer = messagebox.askyesno("Aggiornamento Disponibile", f"È disponibile una nuova versione: {tag}\nVuoi scaricarla ora?")
+            if answer:
+                self.update_manager.open_download_page(url)
+        else:
+            messagebox.showinfo("Aggiornamento", "Nessun aggiornamento disponibile.\nStai usando l'ultima versione.")

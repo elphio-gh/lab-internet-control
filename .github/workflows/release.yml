@@ -1,0 +1,49 @@
+name: Build and Release Windows App
+
+on:
+  push:
+    tags:
+      - 'v*' # Esegue il workflow solo quando viene pushato un tag che inizia con v (es. v0.3.0)
+
+jobs:
+  build:
+    name: Build Windows Exe & Installer
+    runs-on: windows-latest
+    permissions:
+      contents: write # Serve per caricare la release
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11' # Versione stabile per Windows
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build EXE with PyInstaller
+        # Il nostro script build_windows.py fa già tutto: pulizia, gestione versione, e build.
+        # Inoltre è progettato per Windows.
+        run: python build_windows.py
+
+      - name: Build Installer with Inno Setup
+        # Usiamo un'action che ha Inno Setup preinstallato o lo scarica
+        uses: Minionguy/innosetup-action@v1.2.2
+        with:
+          path: installer_config.iss
+
+      - name: Create Release and Upload Asset
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            LabInternetControl_Setup_v*.exe
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
