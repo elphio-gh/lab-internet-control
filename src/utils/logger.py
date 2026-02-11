@@ -56,5 +56,9 @@ class Logger:
         """Registra un avviso."""
         self.logger.warning(message)
 
+    def debug(self, message):
+        """Registra un messaggio di debug."""
+        self.logger.debug(message)
+
 # Istanza globale pronta all'uso
 log = Logger()
