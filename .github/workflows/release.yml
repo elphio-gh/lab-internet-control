@@ -34,7 +34,7 @@ jobs:
 
       - name: Build Installer with Inno Setup
         # Usiamo un'action che ha Inno Setup preinstallato o lo scarica
-        uses: Minionguy/innosetup-action@v1.2.2
+        uses: Minionguyjpro/Inno-Setup-Action@v1.2.2
         with:
           path: installer_config.iss
 
