@@ -8,6 +8,7 @@ from src.ui.app import App
 from src.network.udp_server import UDPServer
 from src.network.http_server import PACHTTPServer
 from src.core.pac_manager import PACManager
+from src.core.command_dispatcher import dispatcher
 from src.utils.logger import log
 
 def main():

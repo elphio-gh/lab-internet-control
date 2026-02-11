@@ -55,8 +55,13 @@ class SimulatedPC(threading.Thread):
                     
                     if new_internet_status != self.internet_status:
                         self.internet_status = new_internet_status
+                        # [FIX] Aggiorna lo stato inviato via UDP per riflettere il blocco nella Dashboard
+                        # OFF = Internet Bloccato (Rosso)
+                        # ON = Internet Libero (Verde)
+                        self.status = "OFF" if self.internet_status == "BLOCKED" else "ON"
+                        
                         color = RED if self.internet_status == "BLOCKED" else GREEN
-                        print(f"{color}[CHANGE] {self.hostname}: Internet is now {self.internet_status}{RESET}")
+                        print(f"{color}[CHANGE] {self.hostname}: Internet is now {self.internet_status} (UDP Status: {self.status}){RESET}")
 
             except Exception as e:
                 # Se il server HTTP è giù, consideriamo "OFFLINE"
@@ -106,13 +111,44 @@ def main():
     print("I PC invieranno telemetria ogni ~2.5 secondi.")
     print("Monitoreranno lo stato di blocco internet in tempo reale.\n")
 
+    # [NEW] Avvio automatico dell'applicazione principale
+    import subprocess
+    import os
+    
+    # Determina il path assoluto di src/main.py
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
+    main_py = os.path.join(project_root, "src", "main.py")
+    
+    print(f"{GREEN}[INFO] Avvio applicazione principale: {main_py}{RESET}")
+    app_process = None
+    try:
+        # Usa sys.executable per usare lo stesso interprete (venv)
+        app_process = subprocess.Popen([sys.executable, main_py])
+    except Exception as e:
+        print(f"{RED}[ERR] Errore avvio app principale: {e}{RESET}")
+
     try:
         while True:
             time.sleep(1)
+            # Controlla se la GUI è stata chiusa dall'utente
+            if app_process and app_process.poll() is not None:
+                print(f"{RED}[INFO] Applicazione principale chiusa. Termino simulazione.{RESET}")
+                break
     except KeyboardInterrupt:
         print("\nArresto simulazione in corso...")
+    finally:
         for pc in pcs:
             pc.stop()
+        
+        if app_process and app_process.poll() is None:
+            print(f"{GREEN}[INFO] Chiusura applicazione principale...{RESET}")
+            app_process.terminate()
+            try:
+                app_process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                 app_process.kill()
+        
         print("Finito.")
 
 if __name__ == "__main__":
