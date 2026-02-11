@@ -9,7 +9,7 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.4**
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.5**
 
 ## Caratteristiche Principali
 

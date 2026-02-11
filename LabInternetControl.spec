@@ -8,17 +8,20 @@ block_cipher = None
 # 🎓 DIDATTICA: Troviamo dinamicamente il percorso di customtkinter per includerlo nella build
 customtkinter_path = os.path.dirname(customtkinter.__file__)
 
+# 🎓 DIDATTICA: Prepariamo la lista dei dati da includere PRIMA di chiamare Analysis
+datas_list = [
+    (customtkinter_path, 'customtkinter/'),
+]
+
+# 🎓 DIDATTICA: Includiamo la cartella assets solo se esiste e non è vuota
+if os.path.exists('assets') and os.listdir('assets'):
+    datas_list.append(('assets/', 'assets/'))
+
 a = Analysis(
     ['src/main.py'],
     pathex=[],
     binaries=[],
-datas=[
-    (customtkinter_path, 'customtkinter/'),
-]
-
-# 🎓 DIDATTICA: Includiamo la cartella assets solo se esiste
-if os.path.exists('assets') and os.listdir('assets'):
-    datas.append(('assets/', 'assets/'))
+    datas=datas_list,
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
