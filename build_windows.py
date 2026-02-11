@@ -55,11 +55,14 @@ def build():
     # 2. Comando PyInstaller
     print("Esecuzione PyInstaller...")
     try:
+        # 🎓 DIDATTICA: check=True solleva un'eccezione se il comando fallisce (exit code != 0)
+        # Questo è fondamentale per la CI/CD: se la build fallisce, vogliamo che l'intero workflow si fermi!
         subprocess.run(["pyinstaller", "--noconfirm", "LabInternetControl.spec"], check=True)
         print("\n[OK] Build completata con successo nella cartella 'dist/LabInternetControl'")
     except subprocess.CalledProcessError as e:
-        print(f"\n[ERRORE] PyInstaller è fallito: {e}")
-        return
+        print(f"\n[ERRORE CRITICO] PyInstaller è fallito con codice {e.returncode}: {e}")
+        # Usciamo con un codice di errore in modo che GitHub Actions (o script chiamante) sappia che è fallito.
+        sys.exit(1)
 
     print("\nPROSSIMO PASSO:")
     print("1. Apri Inno Setup")
