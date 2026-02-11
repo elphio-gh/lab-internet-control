@@ -1,6 +1,7 @@
 import os
 import tempfile
 from src.utils.logger import log
+from src.utils.config import config
 
 class PACManager:
     """
@@ -12,7 +13,12 @@ class PACManager:
     def __init__(self, whitelist=None):
         self.whitelist = whitelist if whitelist else []
         self.pac_file_path = None
-        self.mode = "RESTRICTED" # "RESTRICTED" (Default) o "UNLOCKED" (Internet Libero)
+        
+        # [FIX] Inizializza lo stato in base all'ultima configurazione salvata (o default "ON")
+        # Se l'app si chiude "Sbloccata", al riavvio deve essere "Sbloccata".
+        last_state = config.get("last_state", "ON")
+        self.mode = "UNLOCKED" if last_state == "ON" else "RESTRICTED"
+        log.info(f"PAC Manager inizializzato in modalità: {self.mode} (da config: {last_state})")
 
     def set_mode(self, mode):
         """Imposta la modalità di generazione del PAC."""
