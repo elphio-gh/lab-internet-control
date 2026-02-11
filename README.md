@@ -52,9 +52,32 @@ Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione
 
 ## Distribuzione (Windows)
 
-Per distribuire il software nei laboratori, segui la procedura nella VM Windows:
-1.  Eseguire `python build_windows.py` per creare la build con PyInstaller.
-2.  Utilizzare **Inno Setup** con il file `installer_config.iss` per generare l'installer finale.
+Per creare l'installer .exe, segui questa procedura nella **VM Windows**:
+
+1.  **Preparazione Ambiente**:
+    -   Installa Python 3.11+ e Git.
+    -   Installa **Inno Setup Compiler**.
+    -   Clona/Aggiorna il repo: `git pull`
+
+2.  **Build (Creazione .exe)**:
+    ```resh
+    # Crea venv e installa dipendenze
+    python -m venv venv
+    venv\Scripts\activate
+    pip install -r requirements.txt
+    pip install pyinstaller
+
+    # Lancia lo script di build
+    python build_windows.py
+    ```
+    *Questo genererà la cartella `dist/LabInternetControl`.*
+
+3.  **Generazione Installer**:
+    -   Apri `installer_config.iss` con Inno Setup.
+    -   Premi **Run (F9)**.
+    -   Troverai il file `LabInternetControl_Setup_vX.X.X.exe` nella cartella principale.
+
+Le configurazioni e i log degli utenti verranno salvati in `%LOCALAPPDATA%\LabInternetControl`.
 
 Le configurazioni e i log degli utenti verranno salvati in `%LOCALAPPDATA%\LabInternetControl` per garantire la compatibilità con i permessi di sistema.
 
