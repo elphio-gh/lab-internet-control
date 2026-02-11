@@ -17,7 +17,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 [Languages]
-Name: "italian"; MessagesFile: "compiler:Languages\Italian.islu"
+Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
