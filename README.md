@@ -9,12 +9,12 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.6**
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.7**
 
-### Novità v0.3.6
+### Novità v0.3.7
+- **Fix Critico Windows**: Risolto errore `ModuleNotFoundError` all'avvio dell'eseguibile.
 - **Fix Stato Iniziale**: Il simulatore/PAC ora rispetta correttamente lo stato salvato (ON/OFF) all'avvio.
-- **Nuovo Dialogo Uscita**: Finestra personalizzata per confermare l'uscita quando il blocco è attivo (Niente X ingannevole, solo pulsanti chiari).
-- **Fix Minori**: Correzioni di stabilità e indentazione codice.
+- **Nuovo Dialogo Uscita**: Finestra personalizzata per confermare l'uscita quando il blocco è attivo.
 
 ## Caratteristiche Principali
 
