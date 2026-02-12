@@ -17,6 +17,9 @@ OutputBaseFilename=LabInternetControl_Setup_v0.3.6
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
+DisableDirPage=no
+DisableProgramGroupPage=no
+ShowComponentSizes=yes
 
 [Languages]
 Name: "italian"; MessagesFile: "compiler:Languages\Italian.isl"
