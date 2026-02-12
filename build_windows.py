@@ -31,7 +31,9 @@ def update_installer_config():
         # Regex per sostituire AppVersion=...
         content = re.sub(r"AppVersion=.*", f"AppVersion={APP_VERSION}", content)
         # Regex per sostituire OutputBaseFilename=...
-        content = re.sub(r"OutputBaseFilename=.*", f"OutputBaseFilename=LabInternetControl_Setup_v{APP_VERSION}", content)
+        # [FIX] Evita doppia 'v' (v0.3.10 -> vv0.3.10)
+        clean_version = APP_VERSION.lstrip("v")
+        content = re.sub(r"OutputBaseFilename=.*", f"OutputBaseFilename=LabInternetControl_Setup_v{clean_version}", content)
         
         with open(iss_file, "w", encoding="utf-8") as f:
             f.write(content)
