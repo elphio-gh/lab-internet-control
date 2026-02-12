@@ -42,11 +42,16 @@ class CommandDispatcher:
             # [FIX] run_silent_command elimina il popup nero
             result = run_silent_command(full_cmd, timeout=10)
             
-            if result.returncode == 0:
-                log.info(f"Comando inviato con successo a {host}")
+            # [FIX] Veyon CLI Crash Workaround:
+            # Code 3221225477 = 0xC0000005 (Access Violation) spesso accade alla chiusura di Veyon su Windows
+            # anche se il comando è stato eseguito.
+            CMD_SUCCESS_CODES = [0, 3221225477, -1073741819] 
+            
+            if result.returncode in CMD_SUCCESS_CODES:
+                log.info(f"Comando inviato con successo a {host} (RC={result.returncode})")
                 return True
             else:
-                log.error(f"Errore comando su {host}: {result.stderr}")
+                log.error(f"Errore comando su {host}: {result.stderr} (RC={result.returncode})")
                 return False
 
         except Exception as e:

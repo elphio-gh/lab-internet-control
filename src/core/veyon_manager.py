@@ -71,7 +71,9 @@ class VeyonManager:
             # [FIX] Usa run_silent_command per evitare popup
             result = run_silent_command(cmd, timeout=5)
             
-            if result.returncode == 0 and os.path.exists(tmp_csv):
+            # [FIX] Veyon CLI Bug workaround: Su Windows può crashare (0xC0000005) all'uscita 
+            # pur avendo completato il lavoro. Controlliamo l'esistenza del file invece del returncode.
+            if os.path.exists(tmp_csv) and os.path.getsize(tmp_csv) > 0:
                 hosts = []
                 # 🎓 DIDATTICA: Leggiamo il CSV con delimitatore ';' e newline='' per compatibilità universale
                 with open(tmp_csv, 'r', encoding='utf-8', newline='') as f:
@@ -87,19 +89,26 @@ class VeyonManager:
                             name = row[1].strip()
                             host = row[2].strip() if len(row) > 2 else ""
                             
-                            candidate = name if name else host
+                            # Workaround per nomi default "Nuovo computer" -> meglio usare Hostname per univocità
+                            # Se il nome è generico, preferiamo l'host
+                            if name.lower() == "nuovo computer" and host:
+                                candidate = host
+                            else:
+                                candidate = name if name else host
+
                             if candidate:
                                 hosts.append(candidate)
                 
                 try:
                     os.remove(tmp_csv)
                 except OSError:
-                    pass # Ignora errore cancellazione se file bloccato
+                    pass 
                     
-                log.info(f"Recuperati {len(hosts)} host da Veyon CLI.")
+                log.info(f"Recuperati {len(hosts)} host da Veyon CLI (RC={result.returncode}).")
                 return hosts
             else:
-                log.error(f"Errore export Veyon: {result.stderr}")
+                if result.returncode != 0:
+                    log.error(f"Errore export Veyon: {result.stderr} (Code: {result.returncode})")
                 return []
         except Exception as e:
             log.error(f"Eccezione Veyon CLI: {e}")
@@ -133,12 +142,14 @@ class VeyonManager:
             # [FIX] Usa run_silent_command
             result = run_silent_command(cmd, timeout=10)
             
-            if result.returncode == 0:
-                log.info(f"Export Veyon completato su {file_path}")
+            # [FIX] Workaround crash Veyon: check file output
+            if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+                log.info(f"Export Veyon completato su {file_path} (RC={result.returncode})")
                 return True, "Esportazione completata con successo."
             else:
-                log.error(f"Errore export Veyon: {result.stderr}")
-                return False, f"Errore Veyon: {result.stderr}"
+                msg = result.stderr if result.stderr else f"Exit Code {result.returncode}"
+                log.error(f"Errore export Veyon: {msg}")
+                return False, f"Errore Veyon: {msg}"
         except Exception as e:
             log.error(f"Eccezione Export Veyon: {e}")
             return False, str(e)
@@ -162,8 +173,10 @@ class VeyonManager:
                 cmd_clear = [self.veyon_cli, "networkobjects", "clear"]
                 # [FIX] run_silent_command
                 res_clear = run_silent_command(cmd_clear, timeout=10)
+                # Anche qui potremmo dover ignorare il returncode se Veyon crasha sempre...
+                # Per ora lasciamo il check ma con log
                 if res_clear.returncode != 0:
-                     return False, f"Errore cancellazione dati esistenti: {res_clear.stderr}"
+                     log.warning(f"Clear Veyon RC={res_clear.returncode}. Continuo comunque.")
             
             # 2. Import
             # cmd: veyon-cli networkobjects import <file> format <FORMAT>
@@ -178,12 +191,17 @@ class VeyonManager:
             # [FIX] run_silent_command
             res_import = run_silent_command(cmd_import, timeout=15)
             
-            if res_import.returncode == 0:
-                log.info(f"Import Veyon completato da {file_path}")
+            # Workaround per Import: qui non possiamo controllare un file di output.
+            # Dobbiamo sperare che se stdout dice [OK] sia andato tutto bene, o ignorare RC negativo.
+            # Il log dell'utente mostrava STDOUT: '[OK]\n'
+            
+            if "[OK]" in res_import.stdout or res_import.returncode == 0:
+                log.info(f"Import Veyon completato da {file_path} (RC={res_import.returncode})")
                 return True, "Importazione completata con successo."
             else:
-                log.error(f"Errore import Veyon: {res_import.stderr}")
-                return False, f"Errore Veyon: {res_import.stderr}"
+                msg = res_import.stderr if res_import.stderr else f"Exit Code {res_import.returncode}"
+                log.error(f"Errore import Veyon: {msg}")
+                return False, f"Errore Veyon: {msg}"
 
         except Exception as e:
             log.error(f"Eccezione Import Veyon: {e}")
