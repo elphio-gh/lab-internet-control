@@ -364,7 +364,7 @@ class App(ctk.CTk):
         if not self.pc_widgets:
             if self.scanning_active:
                 # Evita di accumulare thread di caricamento se Veyon è lento/bloccato
-                self.after(5000, self.start_status_scan) # Riprova tra 5s
+                self.after(60000, self.start_status_scan) # Riprova tra 60s
                 return
 
             self.scanning_active = True
@@ -412,8 +412,8 @@ class App(ctk.CTk):
             import threading
             threading.Thread(target=_async_scan, daemon=True).start()
 
-        # Ripeti ogni 10 secondi
-        self.after(10000, self.start_status_scan)
+        # Ripeti ogni 30 secondi
+        self.after(30000, self.start_status_scan)
 
     def _populate_pc_table(self, hosts):
         """Helper per popolare la griglia (da chiamare nel main thread)."""

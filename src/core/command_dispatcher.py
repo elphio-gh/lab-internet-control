@@ -158,8 +158,8 @@ $c.Send($b,$b.Length);
              return
 
         # [FIX] Parallel execution
-        # Max workers = 20 per non saturare la macchina docente, ma sufficiente per 30 PC
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        # Max workers = 4 per ridurre carico CPU (evita clessidra/lag ogni 10s)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:
             # Mappa ogni host alla funzione _execute_remote_command
             futures = {executor.submit(self._execute_remote_command, host, full_cmd): host for host in hosts}
             

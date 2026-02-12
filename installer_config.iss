@@ -34,15 +34,15 @@ Source: "dist\LabInternetControl\*"; DestDir: "{app}"; Flags: ignoreversion recu
 [Setup]
 ; ...
 ; Quando hai il file icona, mettilo in "assets\icon.ico" e decommenta questa riga:
-; SetupIconFile=assets\icon.ico
+SetupIconFile=assets\logo.ico
 
 [Icons]
-Name: "{group}\Lab Internet Control"; Filename: "{app}\LabInternetControl.exe"
+Name: "{group}\Lab Internet Control"; Filename: "{app}\LabInternetControl.exe"; IconFilename: "{app}\assets\logo.ico"
 ; 🎓 DIDATTICA: Creiamo l'icona sul Desktop per TUTTI gli utenti ({commondesktop}).
 ; Il nome è abbreviato in "Lab Control" come richiesto.
 ; Se hai l'icona in assets\icon.ico, decommenta la riga sotto e aggiungi il file alla sezione [Files]
 ; IconFilename: "{app}\icon.ico"
-Name: "{commondesktop}\Lab Control"; Filename: "{app}\LabInternetControl.exe"; Tasks: desktopicon
+Name: "{commondesktop}\Lab Control"; Filename: "{app}\LabInternetControl.exe"; Tasks: desktopicon; IconFilename: "{app}\assets\logo.ico"
 
 [Run]
 Filename: "{app}\LabInternetControl.exe"; Description: "{cm:LaunchProgram,Lab Internet Control}"; Flags: nowait postinstall skipifsilent
