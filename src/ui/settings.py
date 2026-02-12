@@ -6,20 +6,30 @@ from src.core.pac_manager import PACManager
 from src.core.veyon_manager import veyon
 from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION, APP_AUTHOR, APP_LICENSE, APP_COPYRIGHT, APP_REPO
+from src.utils.assets import assets # [NEW]
 import webbrowser
 
 class SettingsFrame(ctk.CTkFrame):
     """
     Frame delle impostazioni (Lingua, Modalità, Whitelist, Veyon).
     """
-    def __init__(self, master, pac_manager, **kwargs):
+    def __init__(self, master, pac_manager, close_callback=None, **kwargs):
         super().__init__(master, **kwargs)
         self.pac_manager = pac_manager
-        self.update_manager = UpdateManager() # [NEW] Istanza locale o passata? Meglio nuova tanto è leggera
+        self.update_manager = UpdateManager()
+        self.close_callback = close_callback
         
-        # Titolo
-        lbl_title = ctk.CTkLabel(self, text=i18n.t("SETTINGS"), font=("Arial", 20, "bold"))
-        lbl_title.pack(pady=20)
+        # Header (Titolo + Close)
+        header_frame = ctk.CTkFrame(self, fg_color="transparent")
+        header_frame.pack(fill="x", padx=20, pady=(20, 10))
+        
+        lbl_title = ctk.CTkLabel(header_frame, text=i18n.t("SETTINGS"), font=("Arial", 20, "bold"))
+        lbl_title.pack(side="left", expand=True) # Center title relative to frame if possible, or just left
+        
+        if self.close_callback:
+            # Bottone X per chiudere
+            btn_close = ctk.CTkButton(header_frame, text="✕", width=40, command=self.close_callback, fg_color="transparent", border_width=1, text_color="gray")
+            btn_close.pack(side="right")
 
         # Creazione Tab
         self.tabview = ctk.CTkTabview(self)
@@ -53,6 +63,7 @@ class SettingsFrame(ctk.CTkFrame):
         frame_actions.pack(fill="x", padx=20, pady=20)
         
         self.btn_save_wl = ctk.CTkButton(frame_actions, text="Salva Whitelist", command=self.save_whitelist, fg_color="#2CC985", text_color="white")
+        self.btn_save_wl.configure(image=assets.get_icon("check"), compound="left") # Icona Check
         self.btn_save_wl.pack(side="right")
         
         ctk.CTkLabel(frame_actions, text="Una riga per dominio (es. wikipedia.org)", text_color="gray", font=("Arial", 11)).pack(side="left")
@@ -62,39 +73,25 @@ class SettingsFrame(ctk.CTkFrame):
         # Info
         ctk.CTkLabel(self.tab_veyon, text="Gestione PC (Veyon)", font=("Arial", 16, "bold")).pack(pady=(20, 10))
         
-        # [FIX] Caricamento Asincrono della lista PC
-        # Non chiamiamo veyon.get_hosts() qui perché blocca l'avvio dell'app.
-        self.lbl_veyon_count = ctk.CTkLabel(self.tab_veyon, text="PC Rilevati: ???", font=("Arial", 14))
-        self.lbl_veyon_count.pack(pady=5)
-        
-        self.btn_refresh_veyon = ctk.CTkButton(self.tab_veyon, text="🔄 Carica Lista PC", command=self.load_veyon_hosts_async)
-        self.btn_refresh_veyon.pack(pady=5)
-
         # Frame Pulsanti Import/Export
         frame_io = ctk.CTkFrame(self.tab_veyon, fg_color="transparent")
         frame_io.pack(pady=20)
         
-        ctk.CTkButton(frame_io, text="Scarica Template CSV", command=self.download_csv_template).pack(side="left", padx=10)
-        ctk.CTkButton(frame_io, text="Importa da CSV", command=self.import_csv_veyon).pack(side="left", padx=10)
-        ctk.CTkButton(frame_io, text="Esporta su CSV", command=self.export_csv_veyon).pack(side="left", padx=10)
+        btn_dl = ctk.CTkButton(frame_io, text="Scarica Template", command=self.download_csv_template)
+        btn_dl.configure(image=assets.get_icon("download"), compound="left")
+        btn_dl.pack(side="left", padx=10)
+
+        btn_imp = ctk.CTkButton(frame_io, text="Importa CSV", command=self.import_csv_veyon)
+        btn_imp.configure(image=assets.get_icon("download"), compound="left") # Usa download come import per ora
+        btn_imp.pack(side="left", padx=10)
+
+        btn_exp = ctk.CTkButton(frame_io, text="Esporta CSV", command=self.export_csv_veyon)
+        # btn_exp.configure(image=assets.get_icon("upload"), compound="left") # Non ho icona upload, uso solo testo o download
+        btn_exp.pack(side="left", padx=10)
         
         # Note
         note = "Nota: L'importazione su Veyon richiede privilegi di amministratore.\nSe fallisce, prova a eseguire l'app come Admin o usa Veyon Configurator."
         ctk.CTkLabel(self.tab_veyon, text=note, text_color="orange", font=("Arial", 11)).pack(pady=20)
-
-    def load_veyon_hosts_async(self):
-        """Carica la lista host in background per non bloccare la UI."""
-        self.btn_refresh_veyon.configure(state="disabled", text="Caricamento...")
-        
-        import threading
-        def _load():
-            hosts = veyon.get_hosts()
-            count = len(hosts)
-            # Update UI in Main Thread
-            self.after(0, lambda: self.lbl_veyon_count.configure(text=f"PC Rilevati: {count}"))
-            self.after(0, lambda: self.btn_refresh_veyon.configure(state="normal", text="🔄 Ricarica Lista"))
-            
-        threading.Thread(target=_load, daemon=True).start()
 
     def save_whitelist(self):
         """Salva la whitelist dalla text area alla config."""
@@ -107,7 +104,7 @@ class SettingsFrame(ctk.CTkFrame):
         # Aggiorna PAC Manager (runtime)
         self.pac_manager.update_whitelist(domains)
         
-        self.btn_save_wl.configure(text="Salvato! ✅", fg_color="green")
+        self.btn_save_wl.configure(text="Salvato!", fg_color="green") # Rimossa emoji check
         self.after(2000, lambda: self.btn_save_wl.configure(text="Salva Whitelist", fg_color="#2CC985"))
 
     def has_unsaved_changes(self):
@@ -215,21 +212,21 @@ class SettingsFrame(ctk.CTkFrame):
             # Se l'URL finisce con .exe, possiamo scaricarlo direttamente
             if url and url.lower().endswith(".exe"):
                 self.btn_check_updates.configure(
-                    text=f"Scarica e Installa {tag} ⬇️", 
+                    text=f"Scarica e Installa {tag}", 
                     fg_color="#2CC02C", 
                     command=lambda: self.confirm_and_download(tag, url)
                 )
             else:
                 # Fallback: apre pagina web
                 self.btn_check_updates.configure(
-                    text=f"Aggiorna a {tag} (Web) ⬇️", 
+                    text=f"Aggiorna a {tag} (Web)", 
                     fg_color="#2CC02C", 
                     command=lambda: self.update_manager.open_download_page(url)
                 )
         else:
             # Niente Popup -> Feedback visuale temporaneo sul bottone
             original_text = "Controlla Aggiornamenti"
-            self.btn_check_updates.configure(text="✅ Nessun aggiornamento", fg_color="gray")
+            self.btn_check_updates.configure(text="Nessun aggiornamento", fg_color="gray")
             self.after(3000, lambda: self.btn_check_updates.configure(text=original_text, fg_color=("summary_theme", "blue"))) # Reset (colore default ctk è 'blue' o theme)
 
     def confirm_and_download(self, tag, url):

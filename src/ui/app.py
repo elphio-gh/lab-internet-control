@@ -12,6 +12,7 @@ from src.core.pac_manager import PACManager
 from src.core.veyon_manager import veyon
 from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION
+from src.utils.assets import assets # [NEW]
 
 class App(ctk.CTk):
     """
@@ -32,6 +33,8 @@ class App(ctk.CTk):
         self.grid_columnconfigure(1, weight=1)
         self.grid_rowconfigure(0, weight=1)
 
+        from src.utils.assets import assets # [NEW] Asset Manager
+
         # === Sidebar (Sinistra) ===
         self.sidebar = ctk.CTkFrame(self, width=200, corner_radius=0)
         self.sidebar.grid(row=0, column=0, sticky="nsew")
@@ -39,26 +42,33 @@ class App(ctk.CTk):
         self.lbl_title = ctk.CTkLabel(self.sidebar, text="Lab Control", font=("Arial", 20, "bold"))
         self.lbl_title.pack(pady=20)
 
-        # [NEW] Status Panel
-        self.lbl_status_main = ctk.CTkLabel(self.sidebar, text="UNKNOWN", font=("Arial", 16, "bold"), text_color="gray")
-        self.lbl_status_main.pack(pady=(0, 5))
+        # [NEW] Status Panel con Icona
+        self.status_frame = ctk.CTkFrame(self.sidebar, fg_color="transparent")
+        self.status_frame.pack(pady=(0, 20))
+        
+        self.lbl_status_icon = ctk.CTkLabel(self.status_frame, text="", image=assets.get_status_icon("on", size=(48, 48)))
+        self.lbl_status_icon.pack()
+        
+        self.lbl_status_main = ctk.CTkLabel(self.status_frame, text="UNKNOWN", font=("Arial", 16, "bold"), text_color="gray")
+        self.lbl_status_main.pack(pady=(5, 0))
+        
         self.lbl_status_detail = ctk.CTkLabel(self.sidebar, text="", font=("Arial", 12), text_color="gray70")
         self.lbl_status_detail.pack(pady=(0, 20))
         
-        # Pulsante Dashboard (per tornare alla vista PC)
-        self.btn_dashboard = ctk.CTkButton(self.sidebar, text="💻 Dashboard", command=self.show_classroom, fg_color="transparent", border_width=1)
-        self.btn_dashboard.pack(pady=10, padx=20, fill="x")
+        # [REMOVED] Pulsante Dashboard (per tornare alla vista PC)
+        # self.btn_dashboard = ctk.CTkButton(self.sidebar, text="Dashboard", command=self.show_classroom, fg_color="transparent", border_width=1)
+        # self.btn_dashboard.pack(pady=10, padx=20, fill="x")
 
-        # [NEW] Pulsante Ricarica (Reload)
-        self.btn_reload = ctk.CTkButton(self.sidebar, text="🔄 Ricarica Lista", command=self.action_reload, fg_color="transparent", border_width=1, font=("Arial", 11))
-        self.btn_reload.pack(pady=(0, 10), padx=20, fill="x")
+        # [MOVED] Pulsante Ricarica (Reload) -> Spostato nel container principale sotto la lista
+        # self.btn_reload = ctk.CTkButton(self.sidebar, text="Ricarica Lista", command=self.action_reload, fg_color="transparent", border_width=1, font=("Arial", 11))
+        # self.btn_reload.pack(pady=(0, 10), padx=20, fill="x")
 
-        # Pulsanti Azione (Testi Localizzati)
+        # Pulsanti Azione (Testi Localizzati + Icone)
         self.btn_block = ActionButton(self.sidebar, text=i18n.t("BLOCK"), command=self.action_block, color="#CC0000")
+        self.btn_block.configure(image=assets.get_icon("cross"), compound="left") # Icona Stop/No Entry
         self.btn_block.pack(pady=(10, 5), padx=20, fill="x")
 
         # [NEW] Selettore Modalità Blocco
-        # Forziamo sempre "Restart" all'avvio come richiesto
         config.set("block_mode", "restart")
         self.block_mode_var = ctk.StringVar(value=i18n.t("MODE_RESTART"))
         self.opt_block_mode = ctk.CTkOptionMenu(
@@ -73,37 +83,43 @@ class App(ctk.CTk):
         self.opt_block_mode.pack(pady=(0, 20), padx=20, fill="x")
 
         self.btn_unblock = ActionButton(self.sidebar, text=i18n.t("UNBLOCK"), command=self.action_unblock, color="#009900")
+        self.btn_unblock.configure(image=assets.get_icon("check"), compound="left")
         self.btn_unblock.pack(pady=10, padx=20, fill="x")
 
         self.btn_whitelist = ActionButton(self.sidebar, text=i18n.t("WL_ON"), command=self.action_whitelist, color="#CCCC00")
+        self.btn_whitelist.configure(image=assets.get_status_icon("wl"), compound="left")
         self.btn_whitelist.pack(pady=(10, 5), padx=20, fill="x")
         self.btn_whitelist.configure(text_color="black")
 
         # [NEW] Pulsante Edit Whitelist
         self.btn_edit_wl = ctk.CTkButton(self.sidebar, text=i18n.t("BTN_EDIT_WL"), command=self.open_whitelist_settings, fg_color="transparent", border_width=1, font=("Arial", 11))
+        self.btn_edit_wl.configure(image=assets.get_icon("edit"), compound="left")
         self.btn_edit_wl.pack(pady=(0, 20), padx=20, fill="x")
 
-        # [NEW] Selettore Lingua (Bandierine) in basso
+        # [NEW] Selettore Lingua (Bandiere Cliccabili)
         self.sidebar_bottom = ctk.CTkFrame(self.sidebar, fg_color="transparent")
         self.sidebar_bottom.pack(side="bottom", fill="x", padx=10, pady=10)
 
-        current_lang_code = config.get("language") or "it"
-        lang_map = {k: v for k, v in i18n.LANGUAGES.items()}
-        self.reverse_lang_map = {v: k for k, v in lang_map.items()}
+        self.flags_frame = ctk.CTkFrame(self.sidebar_bottom, fg_color="transparent")
+        self.flags_frame.pack(side="left", fill="x", expand=True)
 
-        self.opt_lang = ctk.CTkOptionMenu(
-            self.sidebar_bottom,
-            values=list(lang_map.values()),
-            command=self.on_change_language,
-            font=("Arial", 12),
-            fg_color="#333333",
-            button_color="#222222"
-        )
-        self.opt_lang.set(lang_map.get(current_lang_code, "🇮🇹 Italiano"))
-        self.opt_lang.pack(side="left", fill="x", expand=True)
+        # Creazione pulsanti bandiera dinamica
+        for lang_code in ["it", "en", "de", "fr", "es"]:
+            flag_img = assets.get_flag(lang_code, size=(24, 24))
+            btn = ctk.CTkButton(
+                self.flags_frame, 
+                text="", 
+                image=flag_img, 
+                width=30, 
+                height=30, 
+                fg_color="transparent", 
+                hover_color="#444444",
+                command=lambda c=lang_code: self.on_change_language_code(c)
+            )
+            btn.pack(side="left", padx=2)
 
-        # Pulsante Settings (Ridotto a icona piccola)
-        self.btn_settings = ctk.CTkButton(self.sidebar_bottom, text="⚙️", command=self.show_settings, width=30, fg_color="transparent", border_width=1)
+        # Pulsante Settings (Icona Assets)
+        self.btn_settings = ctk.CTkButton(self.sidebar_bottom, text="", image=assets.get_icon("settings"), command=self.show_settings, width=30, fg_color="transparent", border_width=1)
         self.btn_settings.pack(side="right", padx=(5, 0))
 
         # === Container Principale (Destra) ===
@@ -132,12 +148,18 @@ class App(ctk.CTk):
         self.view_classroom = ctk.CTkScrollableFrame(self.view_classroom_container, label_text="")
         self.view_classroom.pack(fill="both", expand=True)
 
+        # [NEW] Pulsante Ricarica sotto la lista
+        self.btn_reload = ctk.CTkButton(self.view_classroom_container, text="Ricarica Lista PC", command=self.action_reload, fg_color="transparent", border_width=1, text_color="gray")
+        self.btn_reload.configure(image=assets.get_icon("download"), compound="left")
+        self.btn_reload.pack(fill="x", pady=(10, 0))
+
         # [NEW] Etichetta Notifiche (Toast) in basso
         self.lbl_notification = ctk.CTkLabel(self.view_classroom_container, text="", height=30, corner_radius=5, fg_color="transparent")
         self.lbl_notification.pack(fill="x", pady=(10, 0))
 
         # -- Vista Settings --
-        self.view_settings = SettingsFrame(self.container, self.pac_manager)
+        # Passiamo show_classroom come callback per chiudere i settings
+        self.view_settings = SettingsFrame(self.container, self.pac_manager, close_callback=self.show_classroom)
 
         # Stato iniziale
         self.pc_widgets = {}
@@ -184,12 +206,14 @@ class App(ctk.CTk):
 
         if mode == "ON":
             self.lbl_status_main.configure(text=i18n.t("STATUS_ON"), text_color="#00FF00")
+            self.lbl_status_icon.configure(image=assets.get_status_icon("on", size=(48, 48))) # Icona Check
             self.lbl_status_detail.configure(text="")
             self.btn_whitelist.configure(text=i18n.t("WL_ON"), fg_color="#CCCC00", hover_color="#AAAA00") 
             self.whitelist_active = False
             self.is_blocked = False
         elif mode == "OFF":
             self.lbl_status_main.configure(text=i18n.t("STATUS_OFF"), text_color="#FF0000")
+            self.lbl_status_icon.configure(image=assets.get_status_icon("off", size=(48, 48))) # Icona Stop
             # Controlla modalità attuale per dettaglio
             block_mode = config.get("block_mode")
             if block_mode == "manual":
@@ -202,6 +226,7 @@ class App(ctk.CTk):
             self.is_blocked = True
         elif mode == "WL":
             self.lbl_status_main.configure(text=i18n.t("STATUS_WL"), text_color="#FFFF00")
+            self.lbl_status_icon.configure(image=assets.get_status_icon("wl", size=(48, 48))) # Icona Shield
             self.lbl_status_detail.configure(text="") # O magari "Accesso Limitato"
             # Pulsante Whitelist diventa "Disattiva" e cambia stile
             self.btn_whitelist.configure(text=i18n.t("WL_OFF"), fg_color="#D4AF37", hover_color="#B5962F") # Gold/Dark Yellow
@@ -217,10 +242,9 @@ class App(ctk.CTk):
     def show_classroom(self):
         self.view_settings.grid_forget()
         self.view_classroom_container.grid(row=0, column=0, sticky="nsew") # Mostra container (Header + List)
-        self.btn_dashboard.configure(fg_color=("gray75", "gray25")) # Highlight
+        # self.btn_dashboard.configure(fg_color=("gray75", "gray25")) # [REMOVED] Button doesn't exist
         self.btn_settings.configure(fg_color="transparent")
         
-        # Ricarichiamo se vuoto (es. primo avvio)
         # Ricarichiamo se vuoto (es. primo avvio)
         # La scansione è gestita dal loop principale in background (start_status_scan)
         if not self.pc_widgets:
@@ -229,7 +253,7 @@ class App(ctk.CTk):
     def show_settings(self):
         self.view_classroom_container.grid_forget()
         self.view_settings.grid(row=0, column=0, sticky="nsew")
-        self.btn_dashboard.configure(fg_color="transparent")
+        # self.btn_dashboard.configure(fg_color="transparent") # [REMOVED]
         self.btn_settings.configure(fg_color=("gray75", "gray25")) # Highlight
 
 
@@ -239,11 +263,14 @@ class App(ctk.CTk):
         code = "restart" if choice == i18n.t("MODE_RESTART") else "manual"
         config.set("block_mode", code)
 
-    def on_change_language(self, choice):
-        """Callback: Aggiorna lingua e avvisa riavvio."""
-        new_code = self.reverse_lang_map.get(choice, "it")
-        config.set("language", new_code)
-        messagebox.showinfo("Lingua", i18n.t("LBL_LANG")) # "Lingua (Riavvio richiesto)"
+    def on_change_language_code(self, code):
+        """Callback: Cambio lingua da bandierina."""
+        if code == config.get("language"):
+            return
+            
+        config.set("language", code)
+        # Riavvio richiesto per applicare cambio lingua completo
+        messagebox.showinfo("Lingua / Language", i18n.t("LBL_LANG"))
 
     def open_whitelist_settings(self):
         """Apre le impostazioni al tab Whitelist."""

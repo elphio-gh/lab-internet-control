@@ -9,13 +9,14 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.17**
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.18**
+
+### Novità v0.3.18
+- **Emoji Fix (Twemoji Asset)**: Risolto problema visualizzazione emoji su Windows 10/11 e Linux. Le bandiere e icone di stato ora usano asset PNG di alta qualità (Twemoji) garantendo un aspetto coerente su tutte le piattaforme.
+- **UI Refactoring**: Sostituito il menu a tendina della lingua con bandierine cliccabili per un accesso più rapido.
+- **Icone Vettoriali**: Ottimizzate icone per pulsanti e stato (Check, Stop, Shield, ecc.).
 
 ### Novità v0.3.17
-- **Fix Critico Windows**: Risolto problema di rilevamento PC dovuto a crash innocui di Veyon CLI (Exit Code 0xC0000005). Ora i PC vengono caricati correttamente anche se il tool di background termina con errore.
-- **Avvio Istantaneo**: Il caricamento della lista PC è ora asincrono e non blocca più l'avvio dell'applicazione.
-- **Ricarica Live**: Aggiunto pulsante "🔄 Ricarica Lista" nella Dashboard per aggiornare i PC senza riavviare.
-- **Code Cleanup**: Ottimizzazioni interne e rimozione dipendenze cicliche.
 
 ### Novità v0.3.15
 - **Fix Veyon Exports**: Correzione sintassi comando CLI per compatibilità Windows.
