@@ -35,6 +35,101 @@ class SettingsFrame(ctk.CTkFrame):
         self._init_veyon_tab()
         self._init_about_tab()
 
+    def _init_whitelist_tab(self):
+        """Inizializza il tab Whitelist."""
+        # Descrizione
+        ctk.CTkLabel(self.tab_wl, text=i18n.t("LBL_WL_DESC") + ":", anchor="w").pack(fill="x", padx=20, pady=(20, 5))
+        
+        # Text Area per i domini
+        self.txt_whitelist = ctk.CTkTextbox(self.tab_wl, height=200)
+        self.txt_whitelist.pack(fill="both", expand=True, padx=20, pady=5)
+        
+        # Carica valori attuali
+        current_wl = config.get("whitelist", [])
+        self.txt_whitelist.insert("0.0", "\n".join(current_wl))
+        
+        # Pulsanti Azione
+        frame_actions = ctk.CTkFrame(self.tab_wl, fg_color="transparent")
+        frame_actions.pack(fill="x", padx=20, pady=20)
+        
+        self.btn_save_wl = ctk.CTkButton(frame_actions, text="Salva Whitelist", command=self.save_whitelist, fg_color="#2CC985", text_color="white")
+        self.btn_save_wl.pack(side="right")
+        
+        ctk.CTkLabel(frame_actions, text="Una riga per dominio (es. wikipedia.org)", text_color="gray", font=("Arial", 11)).pack(side="left")
+
+    def _init_veyon_tab(self):
+        """Inizializza il tab Veyon."""
+        # Info
+        ctk.CTkLabel(self.tab_veyon, text="Gestione PC (Veyon)", font=("Arial", 16, "bold")).pack(pady=(20, 10))
+        
+        hosts = veyon.get_hosts()
+        ctk.CTkLabel(self.tab_veyon, text=f"PC Rilevati: {len(hosts)}", font=("Arial", 14)).pack(pady=5)
+        
+        # Frame Pulsanti Import/Export
+        frame_io = ctk.CTkFrame(self.tab_veyon, fg_color="transparent")
+        frame_io.pack(pady=20)
+        
+        ctk.CTkButton(frame_io, text="Scarica Template CSV", command=self.download_csv_template).pack(side="left", padx=10)
+        ctk.CTkButton(frame_io, text="Importa da CSV", command=self.import_csv_veyon).pack(side="left", padx=10)
+        ctk.CTkButton(frame_io, text="Esporta su CSV", command=self.export_csv_veyon).pack(side="left", padx=10)
+        
+        # Note
+        note = "Nota: L'importazione su Veyon richiede privilegi di amministratore.\nSe fallisce, prova a eseguire l'app come Admin o usa Veyon Configurator."
+        ctk.CTkLabel(self.tab_veyon, text=note, text_color="orange", font=("Arial", 11)).pack(pady=20)
+
+    def save_whitelist(self):
+        """Salva la whitelist dalla text area alla config."""
+        content = self.txt_whitelist.get("0.0", "end").strip()
+        # Filtra righe vuote
+        domains = [line.strip() for line in content.split("\n") if line.strip()]
+        
+        # Aggiorna Config
+        config.set("whitelist", domains)
+        # Aggiorna PAC Manager (runtime)
+        self.pac_manager.update_whitelist(domains)
+        
+        self.btn_save_wl.configure(text="Salvato! ✅", fg_color="green")
+        self.after(2000, lambda: self.btn_save_wl.configure(text="Salva Whitelist", fg_color="#2CC985"))
+
+    def has_unsaved_changes(self):
+        """Controlla se ci sono modifiche non salvate nella whitelist."""
+        current_gui = self.txt_whitelist.get("0.0", "end").strip()
+        saved_list = config.get("whitelist", [])
+        saved_text = "\n".join(saved_list).strip()
+        return current_gui != saved_text
+
+    def select_whitelist_tab(self):
+        self.tabview.set(i18n.t("TAB_WHITELIST"))
+        self.txt_whitelist.focus_set()
+
+    def download_csv_template(self):
+        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")], initialfile="template_lab.csv")
+        if path:
+            ok, msg = veyon.get_template_csv(path)
+            if ok:
+                messagebox.showinfo("Successo", msg)
+            else:
+                messagebox.showerror("Errore", msg)
+
+    def import_csv_veyon(self):
+        path = filedialog.askopenfilename(filetypes=[("CSV Files", "*.csv")])
+        if path:
+            if messagebox.askyesno("Conferma", "Vuoi importare questo file in Veyon?\nAttenzione: La lista attuale verrà sovrascritta (Consigliato)."):
+                ok, msg = veyon.import_csv(path, clear_existing=True)
+                if ok:
+                    messagebox.showinfo("Successo", f"{msg}\nRiavvia l'applicazione per vedere i nuovi PC.")
+                else:
+                    messagebox.showerror("Errore Import", msg)
+
+    def export_csv_veyon(self):
+        path = filedialog.asksaveasfilename(defaultextension=".csv", filetypes=[("CSV Files", "*.csv")], initialfile="backup_veyon.csv")
+        if path:
+            ok, msg = veyon.export_csv(path)
+            if ok:
+                messagebox.showinfo("Successo", msg)
+            else:
+                messagebox.showerror("Errore Export", msg)
+
     def _init_about_tab(self):
         """Inizializza il tab 'About' con info versione e legali."""
         # Frame centrale per allineamento
