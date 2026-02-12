@@ -9,7 +9,6 @@ from src.utils.config import config
 from src.utils.i18n import i18n  # [NEW]
 from src.core.command_dispatcher import dispatcher
 from src.core.pac_manager import PACManager
-from src.core.pac_manager import PACManager
 from src.core.veyon_manager import veyon
 from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION
@@ -49,6 +48,10 @@ class App(ctk.CTk):
         # Pulsante Dashboard (per tornare alla vista PC)
         self.btn_dashboard = ctk.CTkButton(self.sidebar, text="💻 Dashboard", command=self.show_classroom, fg_color="transparent", border_width=1)
         self.btn_dashboard.pack(pady=10, padx=20, fill="x")
+
+        # [NEW] Pulsante Ricarica (Reload)
+        self.btn_reload = ctk.CTkButton(self.sidebar, text="🔄 Ricarica Lista", command=self.action_reload, fg_color="transparent", border_width=1, font=("Arial", 11))
+        self.btn_reload.pack(pady=(0, 10), padx=20, fill="x")
 
         # Pulsanti Azione (Testi Localizzati)
         self.btn_block = ActionButton(self.sidebar, text=i18n.t("BLOCK"), command=self.action_block, color="#CC0000")
@@ -156,6 +159,7 @@ class App(ctk.CTk):
             self.after(500, lambda: self.enforce_state(last_state))
 
         # [NEW] Avvio Scansione Periodica Stato (Agent-less)
+        self.scan_loop_id = None # Tracciamento ID per cancellare loop se necessario
         self.start_status_scan()
 
     def enforce_state(self, mode):
@@ -357,14 +361,22 @@ class App(ctk.CTk):
         1. Se non ho PC, provo a caricarli in background (Async Reload).
         2. Se ho PC, invio comando di scansione in background (Async Scan).
         """
+        # Cancella loop pendente se esiste (sicurezza per chiamate manuali)
+        if self.scan_loop_id:
+            try:
+                self.after_cancel(self.scan_loop_id)
+            except ValueError:
+                pass
+            self.scan_loop_id = None
+
         if not hasattr(self, 'scanning_active'):
             self.scanning_active = False
 
-        # --- CASO 1: Lista PC Vuota (o primo avvio) ---
+        # --- CASO 1: Lista PC Vuota (o primo avvio o reload forzato) ---
         if not self.pc_widgets:
             if self.scanning_active:
                 # Evita di accumulare thread di caricamento se Veyon è lento/bloccato
-                self.after(60000, self.start_status_scan) # Riprova tra 60s
+                self.scan_loop_id = self.after(5000, self.start_status_scan) # Riprova tra 5s (ridotto da 60s per feedback più rapido)
                 return
 
             self.scanning_active = True
@@ -382,7 +394,7 @@ class App(ctk.CTk):
                     
                     self.scanning_active = False
                     # Rianvia loop (ora che forse abbiamo host)
-                    self.after(1000, self.start_status_scan)
+                    self.scan_loop_id = self.after(1000, self.start_status_scan)
 
                 self.after(0, _on_loaded)
 
@@ -394,8 +406,8 @@ class App(ctk.CTk):
         if self.pc_widgets:
             if self.scanning_active:
                 # Scansione precedente ancora in corso -> SKIP per evitare pile-up
-                print("⚠️ Scansione precedente ancora in corso. Skip ciclo.")
-                self.after(5000, self.start_status_scan)
+                # print("⚠️ Scansione precedente ancora in corso. Skip ciclo.")
+                self.scan_loop_id = self.after(5000, self.start_status_scan)
                 return
 
             self.scanning_active = True
@@ -413,7 +425,30 @@ class App(ctk.CTk):
             threading.Thread(target=_async_scan, daemon=True).start()
 
         # Ripeti ogni 30 secondi
-        self.after(30000, self.start_status_scan)
+        self.scan_loop_id = self.after(30000, self.start_status_scan)
+
+    def action_reload(self):
+        """Forza il ricaricamento della lista PC."""
+        self.show_notification("Ricaricamento lista PC...", color="blue")
+        
+        # 1. Ferma eventuali loop
+        if self.scan_loop_id:
+             try:
+                self.after_cancel(self.scan_loop_id)
+             except ValueError:
+                pass
+             self.scan_loop_id = None
+        
+        # 2. Svuota UI
+        for widget in self.view_classroom.winfo_children():
+            widget.destroy()
+        self.pc_widgets = {}
+        
+        # 3. Reset flag per permettere caricamento immediato
+        self.scanning_active = False
+        
+        # 4. Riavvia ciclo (che entrerà nel CASO 1: Load)
+        self.start_status_scan()
 
     def _populate_pc_table(self, hosts):
         """Helper per popolare la griglia (da chiamare nel main thread)."""

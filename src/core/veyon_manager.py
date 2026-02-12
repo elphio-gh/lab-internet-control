@@ -126,7 +126,7 @@ class VeyonManager:
             "networkobjects", 
             "export", 
             file_path, 
-            "format:%type%;%name%;%host%;%mac%;%location%"
+            "format", "%type%;%name%;%host%;%mac%;%location%"
         ]
         
         try:
@@ -166,13 +166,13 @@ class VeyonManager:
                      return False, f"Errore cancellazione dati esistenti: {res_clear.stderr}"
             
             # 2. Import
-            # cmd: veyon-cli networkobjects import <file> format:...
+            # cmd: veyon-cli networkobjects import <file> format <FORMAT>
             cmd_import = [
                 self.veyon_cli, 
                 "networkobjects", 
                 "import", 
                 file_path, 
-                "format:%type%;%name%;%host%;%mac%;%location%"
+                "format", "%type%;%name%;%host%;%mac%;%location%"
             ]
             
             # [FIX] run_silent_command

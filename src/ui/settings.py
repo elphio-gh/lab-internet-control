@@ -62,9 +62,14 @@ class SettingsFrame(ctk.CTkFrame):
         # Info
         ctk.CTkLabel(self.tab_veyon, text="Gestione PC (Veyon)", font=("Arial", 16, "bold")).pack(pady=(20, 10))
         
-        hosts = veyon.get_hosts()
-        ctk.CTkLabel(self.tab_veyon, text=f"PC Rilevati: {len(hosts)}", font=("Arial", 14)).pack(pady=5)
+        # [FIX] Caricamento Asincrono della lista PC
+        # Non chiamiamo veyon.get_hosts() qui perché blocca l'avvio dell'app.
+        self.lbl_veyon_count = ctk.CTkLabel(self.tab_veyon, text="PC Rilevati: ???", font=("Arial", 14))
+        self.lbl_veyon_count.pack(pady=5)
         
+        self.btn_refresh_veyon = ctk.CTkButton(self.tab_veyon, text="🔄 Carica Lista PC", command=self.load_veyon_hosts_async)
+        self.btn_refresh_veyon.pack(pady=5)
+
         # Frame Pulsanti Import/Export
         frame_io = ctk.CTkFrame(self.tab_veyon, fg_color="transparent")
         frame_io.pack(pady=20)
@@ -76,6 +81,20 @@ class SettingsFrame(ctk.CTkFrame):
         # Note
         note = "Nota: L'importazione su Veyon richiede privilegi di amministratore.\nSe fallisce, prova a eseguire l'app come Admin o usa Veyon Configurator."
         ctk.CTkLabel(self.tab_veyon, text=note, text_color="orange", font=("Arial", 11)).pack(pady=20)
+
+    def load_veyon_hosts_async(self):
+        """Carica la lista host in background per non bloccare la UI."""
+        self.btn_refresh_veyon.configure(state="disabled", text="Caricamento...")
+        
+        import threading
+        def _load():
+            hosts = veyon.get_hosts()
+            count = len(hosts)
+            # Update UI in Main Thread
+            self.after(0, lambda: self.lbl_veyon_count.configure(text=f"PC Rilevati: {count}"))
+            self.after(0, lambda: self.btn_refresh_veyon.configure(state="normal", text="🔄 Ricarica Lista"))
+            
+        threading.Thread(target=_load, daemon=True).start()
 
     def save_whitelist(self):
         """Salva la whitelist dalla text area alla config."""

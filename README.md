@@ -9,7 +9,12 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.15**
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.16**
+
+### Novità v0.3.16
+- **Avvio Istantaneo**: Il caricamento della lista PC è ora asincrono e non blocca più l'avvio dell'applicazione.
+- **Ricarica Live**: Aggiunto pulsante "🔄 Ricarica Lista" nella Dashboard per aggiornare i PC senza riavviare.
+- **Code Cleanup**: Ottimizzazioni interne e rimozione dipendenze cicliche.
 
 ### Novità v0.3.15
 - **Fix Veyon Exports**: Correzione sintassi comando CLI per compatibilità Windows.

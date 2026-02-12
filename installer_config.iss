@@ -4,7 +4,7 @@
 [Setup]
 AppId={{C15A7B8F-E2D4-4B9F-83C1-72D9B3877F92}
 AppName=Lab Internet Control
-AppVersion=0.3.15
+AppVersion=0.3.16
 AppPublisher=Alfonso Parisini
 DefaultDirName={autopf}\LabInternetControl
 DefaultGroupName=Lab Internet Control
@@ -13,7 +13,7 @@ PrivilegesRequired=admin
 AllowNoIcons=yes
 ; Output file
 OutputDir=.
-OutputBaseFilename=LabInternetControl_Setup_v0.3.15
+OutputBaseFilename=LabInternetControl_Setup_v0.3.16
 Compression=lzma
 SolidCompression=yes
 WizardStyle=modern
