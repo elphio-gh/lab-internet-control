@@ -6,6 +6,8 @@ import platform
 import json
 from src.utils.logger import log
 from src.utils.config import config
+from src.utils.process import run_silent_command
+
 
 class VeyonManager:
     """
@@ -64,7 +66,9 @@ class VeyonManager:
         cmd = [self.veyon_cli, "networkobjects", "export", tmp_csv]
         
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            # [FIX] Usa run_silent_command per evitare popup
+            result = run_silent_command(cmd, timeout=5)
+            
             if result.returncode == 0 and os.path.exists(tmp_csv):
                 hosts = []
                 with open(tmp_csv, 'r', encoding='utf-8') as f:
@@ -114,9 +118,9 @@ class VeyonManager:
         ]
         
         try:
-            # CREATE_NO_WINDOW per evitare popup su Windows se non si usa wcli (ma qui usiamo cli standard)
-            # Se usiamo veyon-wcli sarebbe meglio, ma config ha veyon_cli_path generico.
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+            # [FIX] Usa run_silent_command
+            result = run_silent_command(cmd, timeout=10)
+            
             if result.returncode == 0:
                 log.info(f"Export Veyon completato su {file_path}")
                 return True, "Esportazione completata con successo."
@@ -144,7 +148,8 @@ class VeyonManager:
             if clear_existing:
                 log.info("Richiesta cancellazione Network Objects Veyon pre-import.")
                 cmd_clear = [self.veyon_cli, "networkobjects", "clear"]
-                res_clear = subprocess.run(cmd_clear, capture_output=True, text=True, timeout=10)
+                # [FIX] run_silent_command
+                res_clear = run_silent_command(cmd_clear, timeout=10)
                 if res_clear.returncode != 0:
                      return False, f"Errore cancellazione dati esistenti: {res_clear.stderr}"
             
@@ -158,7 +163,8 @@ class VeyonManager:
                 "format:%type%;%name%;%host%;%mac%;%location%"
             ]
             
-            res_import = subprocess.run(cmd_import, capture_output=True, text=True, timeout=15)
+            # [FIX] run_silent_command
+            res_import = run_silent_command(cmd_import, timeout=15)
             
             if res_import.returncode == 0:
                 log.info(f"Import Veyon completato da {file_path}")

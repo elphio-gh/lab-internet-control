@@ -1,5 +1,2 @@
-APP_VERSION = "0.3.8"
-APP_AUTHOR = "Alfonso Parisini"
-APP_LICENSE = "MIT License"
-APP_COPYRIGHT = "Copyright © 2026"
+APP_VERSION = "v0.3.9"
 APP_REPO = "https://github.com/elphio-gh/lab-internet-control"

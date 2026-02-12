@@ -3,6 +3,8 @@ import os
 import platform
 from src.utils.logger import log
 from src.utils.config import config
+from src.utils.process import run_silent_command
+
 
 class CommandDispatcher:
     """
@@ -37,8 +39,8 @@ class CommandDispatcher:
         full_cmd = [self.veyon_cli, "remoteaccess", "execute", host, command]
         
         try:
-            # subprocess.run esegue il comando e aspetta che finisca.
-            result = subprocess.run(full_cmd, capture_output=True, text=True, timeout=10)
+            # [FIX] run_silent_command elimina il popup nero
+            result = run_silent_command(full_cmd, timeout=10)
             
             if result.returncode == 0:
                 log.info(f"Comando inviato con successo a {host}")

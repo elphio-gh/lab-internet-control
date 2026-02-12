@@ -385,8 +385,14 @@ class App(ctk.CTk):
             # dispatcher.scan_status è veloce (fire and forget), ma se ci sono tanti host meglio thread.
             # Per ora lo chiamiamo direttamente, dispatcher usa subprocess.
             
-            # Lanciamo in background usando .after per non bloccare
-            self.after(100, lambda: dispatcher.scan_status(hosts, config.get("udp_port")))
+            # [FIX] Eseguiamo la scansione in un thread separato per non bloccare l'UI
+            import threading
+            scan_thread = threading.Thread(
+                target=dispatcher.scan_status,
+                args=(hosts, config.get("udp_port")),
+                daemon=True
+            )
+            scan_thread.start()
             
         # Ripeti ogni 10 secondi
         self.after(10000, self.start_status_scan)
