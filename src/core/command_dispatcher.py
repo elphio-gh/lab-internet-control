@@ -126,7 +126,10 @@ class CommandDispatcher:
         """
         Invia un comando PowerShell ai client per fargli inviare lo stato via UDP.
         Agent-less: Sfrutta Veyon per eseguire lo script al volo.
+        Esegue in PARALLELO per evitare blocchi se un host è lento.
         """
+        import concurrent.futures
+
         # Script PowerShell compattato
         # 1. Legge stato Proxy e PAC
         # 2. Ottiene Utente corrente
@@ -144,7 +147,7 @@ $c.Connect('255.255.255.255',{udp_port});
 $c.Send($b,$b.Length);
 """
         # Rimuoviamo newlines per passarlo come argomento singolo
-        ps_oneliner = ps_script.replace('\\n', ' ').replace('  ', ' ')
+        ps_oneliner = ps_script.replace('\n', ' ').replace('  ', ' ')
         
         # Comando CMD che invoca PowerShell
         full_cmd = f'powershell -WindowStyle Hidden -Command "{ps_oneliner}"'
@@ -154,8 +157,23 @@ $c.Send($b,$b.Length);
              log.info(f"[NO-OP SCAN] System is not Windows. Skipping remote command for {len(hosts)} hosts.")
              return
 
-        for host in hosts:
-            self._execute_remote_command(host, full_cmd)
+        # [FIX] Parallel execution
+        # Max workers = 20 per non saturare la macchina docente, ma sufficiente per 30 PC
+        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+            # Mappa ogni host alla funzione _execute_remote_command
+            futures = {executor.submit(self._execute_remote_command, host, full_cmd): host for host in hosts}
+            
+            # Attende completamento (opzionale, ma utile per loggare fine batch)
+            # Se vogliamo "fire and forget" totale, non chiamiamo as_completed qui,
+            # ma scan_status è già in un thread nel caller (App), quindi ok attendere.
+            for future in concurrent.futures.as_completed(futures):
+                host = futures[future]
+                try:
+                    future.result()
+                except Exception as e:
+                    log.error(f"Errore scan parallelo su {host}: {e}")
+        
+        log.info(f"Scansione completata per {len(hosts)} host.")
 
 # Istanza globale
 dispatcher = CommandDispatcher()

@@ -9,12 +9,12 @@ Questo software permette ai docenti di:
 - Impostare una "Whitelist" (elenco di siti consentiti).
 - Monitorare lo stato dei PC (Internet ON/OFF) tramite una dashboard visiva.
 
-Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.10**
+Sviluppato in Python con interfaccia grafica moderna (CustomTkinter). **Versione: v0.3.11**
 
-### Novità v0.3.10
-- **Fix Critico**: Ripristinato file di versione corrotto che causava crash all'avvio su Windows.
-- **Installer Migliorato**: Icona desktop attiva di default e dettagli installazione visibili.
-- **Performance**: Confermati fix per popup e utilizzo CPU.
+### Novità v0.3.11
+- **Performance Fix**: Risolto il problema del "freeze" periodico dell'interfaccia (ogni 10s).
+- **Async Loading**: Il caricamento degli host e la scansione dello stato ora avvengono in background senza bloccare la UI.
+- **Parallellismo**: La scansione dei PC ora è parallela, rendendo l'aggiornamento molto più veloce anche con molti PC.
 
 ## Caratteristiche Principali
 

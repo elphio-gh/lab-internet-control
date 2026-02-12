@@ -217,8 +217,10 @@ class App(ctk.CTk):
         self.btn_settings.configure(fg_color="transparent")
         
         # Ricarichiamo se vuoto (es. primo avvio)
+        # Ricarichiamo se vuoto (es. primo avvio)
+        # La scansione è gestita dal loop principale in background (start_status_scan)
         if not self.pc_widgets:
-            self.load_pc_table()
+             pass # Attendi che il loop popoli la lista
 
     def show_settings(self):
         self.view_classroom_container.grid_forget()
@@ -226,28 +228,7 @@ class App(ctk.CTk):
         self.btn_dashboard.configure(fg_color="transparent")
         self.btn_settings.configure(fg_color=("gray75", "gray25")) # Highlight
 
-    def load_pc_table(self):
-        hosts = veyon.get_hosts()
-        hosts.sort() # Ordine Alfabetico
 
-        for widget in self.view_classroom.winfo_children():
-            widget.destroy()
-        self.pc_widgets = {}
-
-        if not hosts:
-            lbl = ctk.CTkLabel(self.view_classroom, text="Nessun PC trovato.", text_color="orange")
-            lbl.pack(pady=20)
-            return
-            
-        # from src.ui.widgets import PCRow # Già importato
-
-        for i, hostname in enumerate(hosts):
-            # Alterna colori per leggibilità (Opzionale, ctk gestisce theme, ma possiamo dare un tocco)
-            bg_color = "transparent" # Lasciamo default per clean look
-            
-            row = PCRow(self.view_classroom, hostname=hostname, status="UNKNOWN", fg_color=bg_color)
-            row.pack(fill="x", pady=2, padx=5)
-            self.pc_widgets[hostname] = row
 
     def on_change_block_mode(self, choice):
         """Callback: Aggiorna config quando cambia la modalità."""
@@ -372,27 +353,82 @@ class App(ctk.CTk):
 
     def start_status_scan(self):
         """
-        Loop periodico: "Punzecchia" i PC via Veyon per farsi mandare lo stato via UDP.
-        Non richiede installazione agenti -> Sfrutta PowerShell remoto.
+        Loop periodico: 
+        1. Se non ho PC, provo a caricarli in background (Async Reload).
+        2. Se ho PC, invio comando di scansione in background (Async Scan).
         """
+        if not hasattr(self, 'scanning_active'):
+            self.scanning_active = False
+
+        # --- CASO 1: Lista PC Vuota (o primo avvio) ---
         if not self.pc_widgets:
-            # Se la lista è vuota (es. simulazione avviata dopo), riproviamo a caricare
-            self.load_pc_table()
+            if self.scanning_active:
+                # Evita di accumulare thread di caricamento se Veyon è lento/bloccato
+                self.after(5000, self.start_status_scan) # Riprova tra 5s
+                return
+
+            self.scanning_active = True
             
-        if self.pc_widgets:
-            hosts = list(self.pc_widgets.keys())
-            # Esegui scansione in un thread separato per non bloccare UI mentre itera i comandi Veyon?
-            # dispatcher.scan_status è veloce (fire and forget), ma se ci sono tanti host meglio thread.
-            # Per ora lo chiamiamo direttamente, dispatcher usa subprocess.
-            
-            # [FIX] Eseguiamo la scansione in un thread separato per non bloccare l'UI
+            def _async_load():
+                # Eseguito in thread: può bloccare senza freezare UI
+                hosts = veyon.get_hosts()
+                
+                # Callback in Main Thread
+                def _on_loaded():
+                    hosts.sort()
+                    # Popola UI
+                    if hosts:
+                        self._populate_pc_table(hosts)
+                    
+                    self.scanning_active = False
+                    # Rianvia loop (ora che forse abbiamo host)
+                    self.after(1000, self.start_status_scan)
+
+                self.after(0, _on_loaded)
+
             import threading
-            scan_thread = threading.Thread(
-                target=dispatcher.scan_status,
-                args=(hosts, config.get("udp_port")),
-                daemon=True
-            )
-            scan_thread.start()
-            
+            threading.Thread(target=_async_load, daemon=True).start()
+            return # Esci, il loop viene riattivato dalla callback
+
+        # --- CASO 2: Lista PC Presente (Scansione Stato) ---
+        if self.pc_widgets:
+            if self.scanning_active:
+                # Scansione precedente ancora in corso -> SKIP per evitare pile-up
+                print("⚠️ Scansione precedente ancora in corso. Skip ciclo.")
+                self.after(5000, self.start_status_scan)
+                return
+
+            self.scanning_active = True
+            hosts = list(self.pc_widgets.keys())
+
+            def _async_scan():
+                try:
+                    # Esegue scansione (ora parallela nel dispatcher)
+                    dispatcher.scan_status(hosts, config.get("udp_port"))
+                finally:
+                    # Reset flag in Main Thread
+                    self.after(0, lambda: setattr(self, 'scanning_active', False))
+
+            import threading
+            threading.Thread(target=_async_scan, daemon=True).start()
+
         # Ripeti ogni 10 secondi
         self.after(10000, self.start_status_scan)
+
+    def _populate_pc_table(self, hosts):
+        """Helper per popolare la griglia (da chiamare nel main thread)."""
+        for widget in self.view_classroom.winfo_children():
+            widget.destroy()
+        self.pc_widgets = {}
+
+        if not hosts:
+            lbl = ctk.CTkLabel(self.view_classroom, text="Nessun PC trovato.", text_color="orange")
+            lbl.pack(pady=20)
+            return
+            
+        for i, hostname in enumerate(hosts):
+            bg_color = "transparent"
+            row = PCRow(self.view_classroom, hostname=hostname, status="UNKNOWN", fg_color=bg_color)
+            row.pack(fill="x", pady=2, padx=5)
+            self.pc_widgets[hostname] = row
+
