@@ -60,10 +60,12 @@ class VeyonManager:
         import tempfile
         tmp_csv = os.path.join(tempfile.gettempdir(), "veyon_hosts.csv")
         
-        # Comando: veyon-cli networkobjects export <file> format:CSV
-        # Nota: La sintassi esatta di veyon-cli purtroppo varia tra versioni.
-        # Assumiamo 'networkobjects export <file>' funzioni per il CSV default.
-        cmd = [self.veyon_cli, "networkobjects", "export", tmp_csv]
+        # 🎓 DIDATTICA: Forziamo un formato esplicito per evitare problemi di parsing.
+        # Sintassi corretta: veyon-cli ... export <FILE> format <FORMAT_STRING>
+        cmd = [
+            self.veyon_cli, "networkobjects", "export", tmp_csv,
+            "format", "%type%;%name%;%host%;%mac%;%location%"
+        ]
         
         try:
             # [FIX] Usa run_silent_command per evitare popup
@@ -71,19 +73,29 @@ class VeyonManager:
             
             if result.returncode == 0 and os.path.exists(tmp_csv):
                 hosts = []
-                with open(tmp_csv, 'r', encoding='utf-8') as f:
-                    reader = csv.reader(f)
-                    # Formato atteso Veyon CSV: Name,Host,MAC,Room...
-                    # Ma potrebbe variare. Cerchiamo colonne che sembrano Hostname.
+                # 🎓 DIDATTICA: Leggiamo il CSV con delimitatore ';' e newline='' per compatibilità universale
+                with open(tmp_csv, 'r', encoding='utf-8', newline='') as f:
+                    reader = csv.reader(f, delimiter=';')
                     for row in reader:
+                        # Format: type;name;host;mac;location
                         if len(row) >= 2:
-                            # Euristicamente prendiamo il secondo campo se non vuoto, o il primo
-                            # Spesso: Nome, Hostname/IP
-                            candidate = row[1].strip() if row[1].strip() else row[0].strip()
-                            if candidate and candidate.lower() != "host": # Skip header
+                            # Skip header se presente (controlliamo i primi due campi)
+                            if row[0].lower() == "type" and row[1].lower() == "name":
+                                continue
+                                
+                            # 🎓 DIDATTICA: Preferiamo il "Nome" visuale di Veyon, fallback su Host/IP
+                            name = row[1].strip()
+                            host = row[2].strip() if len(row) > 2 else ""
+                            
+                            candidate = name if name else host
+                            if candidate:
                                 hosts.append(candidate)
                 
-                os.remove(tmp_csv)
+                try:
+                    os.remove(tmp_csv)
+                except OSError:
+                    pass # Ignora errore cancellazione se file bloccato
+                    
                 log.info(f"Recuperati {len(hosts)} host da Veyon CLI.")
                 return hosts
             else:
