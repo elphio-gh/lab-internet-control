@@ -1,4 +1,4 @@
-APP_VERSION = "v0.3.9"
+APP_VERSION = "v0.3.10"
 APP_AUTHOR = "Alfonso Parisini"
 APP_LICENSE = "MIT"
 APP_COPYRIGHT = "Copyright (c) 2026 Alfonso Parisini"
