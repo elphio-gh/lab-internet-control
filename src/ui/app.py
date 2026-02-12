@@ -6,9 +6,9 @@ from src.ui.widgets import PCWidget, ActionButton, PCRow
 from src.ui.dialogs import ExitDialog # [NEW]
 from src.ui.settings import SettingsFrame  # [NEW]
 from src.utils.config import config
-from src.utils.i18n import i18n  # [NEW]
-from src.core.command_dispatcher import dispatcher
-from src.core.pac_manager import PACManager
+from src.utils.i18n import i18n
+from src.core.lab_controller import lab_controller
+from src.core.veyon_manager import veyon
 from src.core.veyon_manager import veyon
 from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION
@@ -18,10 +18,10 @@ class App(ctk.CTk):
     """
     Finestra principale dell'applicazione.
     """
-    def __init__(self, pac_manager):
+    def __init__(self, lab_controller):
         super().__init__()
 
-        self.pac_manager = pac_manager
+        self.lab_controller = lab_controller
         self.update_manager = UpdateManager() # [NEW]
 
         self.title(i18n.t("APP_TITLE"))
@@ -159,7 +159,7 @@ class App(ctk.CTk):
 
         # -- Vista Settings --
         # Passiamo show_classroom come callback per chiudere i settings
-        self.view_settings = SettingsFrame(self.container, self.pac_manager, close_callback=self.show_classroom)
+        self.view_settings = SettingsFrame(self.container, self.lab_controller, close_callback=self.show_classroom)
 
         # Stato iniziale
         self.pc_widgets = {}
@@ -194,7 +194,7 @@ class App(ctk.CTk):
             dispatcher.block_internet(hosts, mode=block_mode)
         elif mode == "WL":
             pac_url = f"http://{config.get('lab_ip', '192.168.1.100')}:{config.get('http_port')}/proxy.pac"
-            dispatcher.apply_whitelist(hosts, pac_url)
+            self.lab_controller.apply_whitelist(hosts, pac_url)
 
     def update_gui_status(self, mode):
         """
@@ -287,7 +287,7 @@ class App(ctk.CTk):
         
         hosts = list(self.pc_widgets.keys())
         mode = config.get("block_mode") or "restart"
-        dispatcher.block_internet(hosts, mode=mode)
+        self.lab_controller.block_internet(hosts, mode=mode)
         
         # Notifica specifica per modalità
         msg = i18n.t("MSG_BLOCK_RESTART") if mode == "restart" else i18n.t("MSG_BLOCK_MANUAL")
@@ -338,7 +338,7 @@ class App(ctk.CTk):
         self.btn_whitelist.configure(text=i18n.t("WL_ON"))
 
         hosts = list(self.pc_widgets.keys())
-        dispatcher.unblock_internet(hosts)
+        self.lab_controller.unblock_internet(hosts)
         self.show_notification(i18n.t("MSG_UNBLOCK").format(len(hosts)), color="#009900")
         self.update_gui_status("ON")
 
@@ -363,14 +363,14 @@ class App(ctk.CTk):
                 # elif answer is False: # No -> Procedi con vecchia config
             
             pac_url = f"http://{config.get('lab_ip', '192.168.1.100')}:{config.get('http_port')}/proxy.pac"
-            dispatcher.apply_whitelist(hosts, pac_url)
+            self.lab_controller.apply_whitelist(hosts, pac_url)
             
             self.show_notification(i18n.t("MSG_WHITELIST").format(len(hosts)), color="#CCCC00", text_color="black")
             self.update_gui_status("WL")
         else:
             # DISATTIVA WHITELIST -> TORNA A BLOCCATO (o Blocca tutto per sicurezza)
             mode = config.get("block_mode") or "restart"
-            dispatcher.block_internet(hosts, mode=mode)
+            self.lab_controller.block_internet(hosts, mode=mode)
             
             self.show_notification("Whitelist Disattivata. Internet BLOCCATO.", color="#CC0000")
             self.update_gui_status("OFF")
@@ -443,7 +443,7 @@ class App(ctk.CTk):
             def _async_scan():
                 try:
                     # Esegue scansione (ora parallela nel dispatcher)
-                    dispatcher.scan_status(hosts, config.get("udp_port"))
+                    self.lab_controller.scan_status(hosts, config.get("udp_port"))
                 finally:
                     # Reset flag in Main Thread
                     self.after(0, lambda: setattr(self, 'scanning_active', False))

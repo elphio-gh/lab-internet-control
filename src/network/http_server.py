@@ -2,15 +2,15 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import threading
 from src.utils.logger import log
 from src.utils.config import config
-from src.core.pac_manager import PACManager
+
 
 class PACRequestHandler(BaseHTTPRequestHandler):
     """
     Gestore richieste HTTP per servire il file PAC.
     """
     
-    # 🎓 DIDATTICA: Riferimento al PACManager per generare il contenuto al volo.
-    pac_manager = None 
+    # 🎓 DIDATTICA: Riferimento al LabController per generare il contenuto al volo.
+    lab_controller = None 
 
     def do_GET(self):
         """Risponde alle richieste GET (es. http://localhost:8080/proxy.pac)"""
@@ -19,13 +19,13 @@ class PACRequestHandler(BaseHTTPRequestHandler):
             self.send_header('Content-type', 'application/x-ns-proxy-autoconfig')
             self.end_headers()
             
-            if self.pac_manager:
-                content = self.pac_manager.generate_pac_script()
+            if self.lab_controller:
+                content = self.lab_controller.generate_pac_script()
                 self.wfile.write(content.encode('utf-8'))
                 log.info(f"PAC servito a {self.client_address[0]}")
             else:
-                self.wfile.write(b"No PAC Manager configured")
-                log.error("PAC Manager non configurato nel server HTTP")
+                self.wfile.write(b"No Lab Controller configured")
+                log.error("Lab Controller non configurato nel server HTTP")
         else:
             self.send_error(404, "File Not Found")
 
@@ -33,12 +33,12 @@ class PACHTTPServer:
     """
     Server HTTP che gira in un thread separato.
     """
-    def __init__(self, pac_manager):
+    def __init__(self, lab_controller):
         self.port = config.get("http_port")
         self.server = None
         self.thread = None
         # Impostiamo il gestore statico
-        PACRequestHandler.pac_manager = pac_manager
+        PACRequestHandler.lab_controller = lab_controller
 
     def start(self):
         """Avvia il server in un thread separato per non bloccare la UI."""

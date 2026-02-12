@@ -2,7 +2,6 @@ import customtkinter as ctk
 from tkinter import filedialog, messagebox
 from src.utils.config import config
 from src.utils.i18n import i18n
-from src.core.pac_manager import PACManager
 from src.core.veyon_manager import veyon
 from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION, APP_AUTHOR, APP_LICENSE, APP_COPYRIGHT, APP_REPO
@@ -13,9 +12,9 @@ class SettingsFrame(ctk.CTkFrame):
     """
     Frame delle impostazioni (Lingua, Modalità, Whitelist, Veyon).
     """
-    def __init__(self, master, pac_manager, close_callback=None, **kwargs):
+    def __init__(self, master, lab_controller, close_callback=None, **kwargs):
         super().__init__(master, **kwargs)
-        self.pac_manager = pac_manager
+        self.lab_controller = lab_controller
         self.update_manager = UpdateManager()
         self.close_callback = close_callback
         
@@ -102,7 +101,7 @@ class SettingsFrame(ctk.CTkFrame):
         # Aggiorna Config
         config.set("whitelist", domains)
         # Aggiorna PAC Manager (runtime)
-        self.pac_manager.update_whitelist(domains)
+        self.lab_controller.update_whitelist(domains)
         
         self.btn_save_wl.configure(text="Salvato!", fg_color="green") # Rimossa emoji check
         self.after(2000, lambda: self.btn_save_wl.configure(text="Salva Whitelist", fg_color="#2CC985"))

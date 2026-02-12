@@ -7,25 +7,21 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from src.ui.app import App
 from src.network.udp_server import UDPServer
 from src.network.http_server import PACHTTPServer
-from src.core.pac_manager import PACManager
-from src.core.command_dispatcher import dispatcher
+from src.core.lab_controller import lab_controller
 from src.utils.logger import log
 
 def main():
     log.info("Avvio Lab Internet Control...")
 
-    # 1. Inizializziamo il PAC Manager
-    pac_manager = PACManager()
+    # 1. (Controller è singleton, già inizializzato)
+    # lab_controller è importato sopra
     
-    # 2. Colleghiamo il dispatcher al PAC Manager per sync stato
-    dispatcher.set_pac_manager(pac_manager)
-
-    # 3. Avviamo il server HTTP per il PAC
-    http_server = PACHTTPServer(pac_manager)
+    # 2. Avviamo il server HTTP per il PAC (passiamo il controller)
+    http_server = PACHTTPServer(lab_controller)
     http_server.start()
     
     # 3. Inizializziamo la UI
-    app = App(pac_manager)
+    app = App(lab_controller)
     
     # 4. Avviamo il server UDP per la telemetria
     # Passiamo il metodo update_pc_status della app come callback
