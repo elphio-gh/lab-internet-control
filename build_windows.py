@@ -72,14 +72,6 @@ def build():
     print("3. Il file Setup.exe sarà pronto!")
 
 if __name__ == "__main__":
-    if os.name != 'nt':
-        print("ATTENZIONE: Questo script è progettato per essere eseguito su WINDOWS.")
-        # Se siamo in GitHub Actions, continuiamo senza chiedere
-        if os.environ.get('GITHUB_ACTIONS'):
-            print("Rilevato GitHub Actions: procedo con la build...")
-        else:
-            confirm = input("Vuoi continuare comunque su Linux (solo per test)? (s/n): ")
-            if confirm.lower() != 's':
-                sys.exit(0)
+    # Windows check removed as per refactoring requirements
     
     build()

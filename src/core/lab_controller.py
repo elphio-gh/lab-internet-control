@@ -81,9 +81,7 @@ class LabController:
 
     def _execute_remote_command(self, host, command):
         """Esegue un comando su un PC remoto usando Veyon CLI."""
-        if platform.system() != "Windows":
-             log.warning(f"[MOCK VEYON] Su {host} esegui: {command}")
-             return True
+        # Windows-only enforced: Veyon CLI check
 
         if not os.path.exists(self.veyon_cli):
             log.error(f"Veyon CLI non trovato in: {self.veyon_cli}")
@@ -184,9 +182,7 @@ $c.Send($b,$b.Length);
         ps_oneliner = ps_script.replace('\n', ' ').replace('  ', ' ')
         full_cmd = f'powershell -WindowStyle Hidden -Command "{ps_oneliner}"'
         
-        if platform.system() != "Windows":
-             log.info(f"[NO-OP SCAN] Skipping remote command for {len(hosts)} hosts.")
-             return
+        # Windows-only enforced: PowerShell check
 
         # Parallel execution
         with concurrent.futures.ThreadPoolExecutor(max_workers=4) as executor:

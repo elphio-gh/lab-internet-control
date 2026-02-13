@@ -20,8 +20,9 @@ class Config:
 
     def __init__(self, config_file="config.json"):
         # 🎓 DIDATTICA: Identifichiamo dove salvare la configurazione per essere sicuri di avere i permessi.
-        if os.name == 'nt' and not os.path.exists(config_file):
-            # Se siamo su Windows e non c'è un file config locale (tipico di un'installazione)
+        # 🎓 DIDATTICA: Identifichiamo dove salvare la configurazione per essere sicuri di avere i permessi.
+        if not os.path.exists(config_file):
+            # Se siamo su Windows (implicito) e non c'è un file config locale (tipico di un'installazione)
             # usiamo la cartella AppData.
             appdata_dir = os.environ.get('LOCALAPPDATA', os.path.expanduser('~'))
             config_dir = os.path.join(appdata_dir, "LabInternetControl")
