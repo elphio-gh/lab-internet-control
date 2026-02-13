@@ -3,7 +3,7 @@ import subprocess
 import os
 import random
 import platform
-import json
+import platform
 from src.utils.logger import log
 from src.utils.config import config
 from src.utils.process import run_silent_command
@@ -26,25 +26,11 @@ class VeyonManager:
         hosts = []
         
         # 1. Tenta recupero reale (Windows)
+        # Se siamo su Windows (unico OS supportato), usiamo la CLI
         if platform.system() == "Windows":
             hosts = self._get_hosts_from_cli()
-        
-        # 2. Se vuoto (o Linux/Errore), restituisce lista vuota
-        if not hosts:
-            if platform.system() != "Windows":
-                 log.info("Sistema non-Windows rilevato. Controllo simulazione...")
-                 # Mock per Linux: Legge file JSON locale se esiste
-                 sim_file = "simulated_hosts.json"
-                 if os.path.exists(sim_file):
-                     try:
-                         with open(sim_file, 'r') as f:
-                             hosts = json.load(f)
-                         hosts.sort()
-                         log.info(f"Caricati {len(hosts)} host simulati da {sim_file}")
-                     except Exception as e:
-                         log.error(f"Errore lettura {sim_file}: {e}")
-            else:
-                 log.warning("Impossibile recuperare host da Veyon.")
+        else:
+            log.warning("Sistema non-Windows rilevato. Veyon CLI non supportata.")
             
         return hosts
 

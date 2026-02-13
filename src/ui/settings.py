@@ -7,6 +7,8 @@ from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION, APP_AUTHOR, APP_LICENSE, APP_COPYRIGHT, APP_REPO
 from src.utils.assets import assets # [NEW]
 import webbrowser
+import os
+from src.utils.logger import log
 
 class SettingsFrame(ctk.CTkFrame):
     """
@@ -38,10 +40,12 @@ class SettingsFrame(ctk.CTkFrame):
         # sono state spostate nella sidebar per un accesso più rapido.
         self.tab_wl = self.tabview.add(i18n.t("TAB_WHITELIST"))
         self.tab_veyon = self.tabview.add("Veyon")
+        self.tab_logs = self.tabview.add("Logs")
         self.tab_about = self.tabview.add(i18n.t("TAB_ABOUT"))
 
         self._init_whitelist_tab()
         self._init_veyon_tab()
+        self._init_logs_tab()
         self._init_about_tab()
 
     def _init_whitelist_tab(self):
@@ -65,7 +69,13 @@ class SettingsFrame(ctk.CTkFrame):
         self.btn_save_wl.configure(image=assets.get_icon("check"), compound="left") # Icona Check
         self.btn_save_wl.pack(side="right")
         
-        ctk.CTkLabel(frame_actions, text="Una riga per dominio (es. wikipedia.org)", text_color="gray", font=("Arial", 11)).pack(side="left")
+        label_text = (
+            "Inserisci un dominio per riga.\n"
+            "Esempio:\n"
+            "• 'google.com' autorizza TUTTI i sottodomini (Drive, Classroom, ecc.)\n"
+            "• 'classroom.google.com' autorizza SOLO Classroom (non tutto Google)."
+        )
+        ctk.CTkLabel(frame_actions, text=label_text, text_color="gray", font=("Arial", 11), justify="left").pack(side="left")
 
     def _init_veyon_tab(self):
         """Inizializza il tab Veyon."""
@@ -144,6 +154,84 @@ class SettingsFrame(ctk.CTkFrame):
                 messagebox.showinfo("Successo", msg)
             else:
                 messagebox.showerror("Errore Export", msg)
+
+    def _init_logs_tab(self):
+        """Inizializza il tab dei Log."""
+        # Frame controlli (Refresh, open folder, auto-refresh)
+        frame_controls = ctk.CTkFrame(self.tab_logs, fg_color="transparent")
+        frame_controls.pack(fill="x", padx=20, pady=(20, 10))
+        
+        btn_refresh = ctk.CTkButton(frame_controls, text="Aggiorna Log", command=lambda: self.load_logs(force=True), width=120)
+        btn_refresh.pack(side="left", padx=(0, 10))
+        
+        btn_open_folder = ctk.CTkButton(frame_controls, text="Apri Cartella Log", command=self.open_logs_folder, width=150, fg_color="#555555")
+        btn_open_folder.pack(side="left", padx=(0, 10))
+        
+        # Checkbox Auto-Refresh
+        self.chk_auto_refresh = ctk.CTkCheckBox(frame_controls, text="Auto-aggiornamento", font=("Arial", 11))
+        self.chk_auto_refresh.select() # Default ON
+        self.chk_auto_refresh.pack(side="left", padx=10)
+
+        lbl_info = ctk.CTkLabel(frame_controls, text=f"File: {os.path.basename(log.get_log_file_path())}", text_color="gray")
+        lbl_info.pack(side="right")
+
+        # Text Area Log (Read-Only)
+        self.txt_logs = ctk.CTkTextbox(self.tab_logs, font=("Consolas", 12))
+        self.txt_logs.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+        
+        # Stato interno per ottimizzazione
+        self._last_log_stat = None
+        
+        # Caricamento iniziale
+        self.load_logs()
+        
+        # Avvia loop di polling
+        self.poll_logs()
+
+    def poll_logs(self):
+        """Controlla periodicamente se ci sono nuovi log."""
+        # Esegui solo se il tab Logs è visibile e il checkbox è attivo
+        if self.tabview.get() == "Logs" and self.chk_auto_refresh.get():
+            self.load_logs()
+            
+        # Riesegui tra 2 secondi
+        self.after(2000, self.poll_logs)
+
+    def load_logs(self, force=False):
+        """Legge il file di log e aggiorna la text area (Ottimizzato)."""
+        log_path = log.get_log_file_path()
+        try:
+            if os.path.exists(log_path):
+                # Ottimizzazione: controlla se il file è cambiato (mtime e size)
+                current_stat = os.stat(log_path)
+                if not force and self._last_log_stat:
+                    if (current_stat.st_mtime == self._last_log_stat.st_mtime and 
+                        current_stat.st_size == self._last_log_stat.st_size):
+                        return # Nessun cambiamento
+                
+                self._last_log_stat = current_stat
+                
+                with open(log_path, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                self.txt_logs.configure(state="normal")
+                self.txt_logs.delete("0.0", "end")
+                self.txt_logs.insert("0.0", content)
+                self.txt_logs.see("end") # Auto-scroll in fondo
+                self.txt_logs.configure(state="disabled")
+            else:
+                self.txt_logs.insert("0.0", "Nessun file di log trovato.")
+        except Exception as e:
+            # In caso di errore (es. file lock), riprova al prossimo ciclo senza spaccare tutto
+            print(f"Errore lettura log: {e}")
+
+    def open_logs_folder(self):
+        """Apre la cartella dei log in Esplora Risorse."""
+        log_dir = os.path.dirname(log.get_log_file_path())
+        if os.path.exists(log_dir):
+            os.startfile(log_dir)
+        else:
+            messagebox.showerror("Errore", "Cartella log non trovata.")
 
     def _init_about_tab(self):
         """Inizializza il tab 'About' con info versione e legali."""

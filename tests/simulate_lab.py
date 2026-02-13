@@ -84,17 +84,7 @@ def main():
     args = parser.parse_args()
 
     print(f"Avvio simulazione di {args.count} PC...")
-    
-    # [NEW] Generiamo il file JSON per il VeyonManager (Mock su Linux)
-    # Serve affinché la dashboard sappia quali PC mostrare
-    import json
-    sim_hosts = [f"PC-{i:02d}" for i in range(1, args.count + 1)]
-    try:
-        with open("simulated_hosts.json", "w") as f:
-            json.dump(sim_hosts, f)
-        print(f"{GREEN}[INFO] Creato file 'simulated_hosts.json' per la dashboard.{RESET}")
-    except Exception as e:
-        print(f"{RED}[ERR] Impossibile creare JSON simulazione: {e}{RESET}")
+
 
     pcs = []
     

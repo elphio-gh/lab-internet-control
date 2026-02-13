@@ -13,6 +13,7 @@ from src.core.veyon_manager import veyon
 from src.core.update_manager import UpdateManager # [NEW]
 from src.utils.version import APP_VERSION
 from src.utils.assets import assets # [NEW]
+from src.network.connectivity import check_internet_connection # [NEW]
 
 class App(ctk.CTk):
     """
@@ -51,6 +52,10 @@ class App(ctk.CTk):
         
         self.lbl_status_main = ctk.CTkLabel(self.status_frame, text="UNKNOWN", font=("Arial", 16, "bold"), text_color="gray")
         self.lbl_status_main.pack(pady=(5, 0))
+
+        # [NEW] Internet Status
+        self.lbl_internet = ctk.CTkLabel(self.status_frame, text="INTERNET: ...", font=("Arial", 10), text_color="gray")
+        self.lbl_internet.pack(pady=(2, 0))
         
         self.lbl_status_detail = ctk.CTkLabel(self.sidebar, text="", font=("Arial", 12), text_color="gray70")
         self.lbl_status_detail.pack(pady=(0, 20))
@@ -183,6 +188,9 @@ class App(ctk.CTk):
         # [NEW] Avvio Scansione Periodica Stato (Agent-less)
         self.scan_loop_id = None # Tracciamento ID per cancellare loop se necessario
         self.start_status_scan()
+        
+        # [NEW] Avvio Monitoraggio Internet
+        self.monitor_internet()
 
     def enforce_state(self, mode):
         """Riapplica lo stato salvato all'avvio (senza notifica)."""
@@ -191,7 +199,7 @@ class App(ctk.CTk):
 
         if mode == "OFF":
             block_mode = config.get("block_mode") or "restart"
-            dispatcher.block_internet(hosts, mode=block_mode)
+            self.lab_controller.block_internet(hosts, mode=block_mode)
         elif mode == "WL":
             pac_url = f"http://{config.get('lab_ip', '192.168.1.100')}:{config.get('http_port')}/proxy.pac"
             self.lab_controller.apply_whitelist(hosts, pac_url)
@@ -293,7 +301,23 @@ class App(ctk.CTk):
         msg = i18n.t("MSG_BLOCK_RESTART") if mode == "restart" else i18n.t("MSG_BLOCK_MANUAL")
         self.show_notification(msg, color="#CC0000")
         
+        msg = i18n.t("MSG_BLOCK_RESTART") if mode == "restart" else i18n.t("MSG_BLOCK_MANUAL")
+        self.show_notification(msg, color="#CC0000")
+        
         self.update_gui_status("OFF")
+        self._trigger_forced_scan()
+
+    def _trigger_forced_scan(self):
+        """Forza una scansione dello stato dopo un breve ritardo."""
+        # Cancelliamo timer esistenti per evitare sovrapposizioni
+        if self.scan_loop_id:
+            try:
+                self.after_cancel(self.scan_loop_id)
+            except ValueError:
+                pass
+        
+        # Avvia scansione tra 1.5 secondi (tempo per propagazione registry)
+        self.scan_loop_id = self.after(1500, self.start_status_scan)
 
 
     def on_close(self):
@@ -341,6 +365,7 @@ class App(ctk.CTk):
         self.lab_controller.unblock_internet(hosts)
         self.show_notification(i18n.t("MSG_UNBLOCK").format(len(hosts)), color="#009900")
         self.update_gui_status("ON")
+        self._trigger_forced_scan()
 
     def action_whitelist(self):
         if not self.pc_widgets: return
@@ -374,6 +399,8 @@ class App(ctk.CTk):
             
             self.show_notification("Whitelist Disattivata. Internet BLOCCATO.", color="#CC0000")
             self.update_gui_status("OFF")
+            
+        self._trigger_forced_scan()
 
 
     def update_pc_status(self, hostname, status, user=None):
@@ -493,4 +520,28 @@ class App(ctk.CTk):
             row = PCRow(self.view_classroom, hostname=hostname, status="UNKNOWN", fg_color=bg_color)
             row.pack(fill="x", pady=2, padx=5)
             self.pc_widgets[hostname] = row
+
+    def monitor_internet(self):
+        """
+        Controlla la connettività internet in un thread separato e aggiorna la UI.
+        Esegue il check ogni 60 secondi.
+        """
+        def _check():
+            is_online = check_internet_connection()
+            
+            # Update UI in main thread
+            def _update_ui():
+                if is_online:
+                    self.lbl_internet.configure(text="INTERNET: ONLINE", text_color="#00FF00")
+                else:
+                    self.lbl_internet.configure(text="INTERNET: OFFLINE", text_color="#FF0000")
+                
+                # Schedula prossimo controllo tra 60s
+                self.after(60000, self.monitor_internet)
+
+            self.after(0, _update_ui)
+
+        import threading
+        threading.Thread(target=_check, daemon=True).start()
+
 

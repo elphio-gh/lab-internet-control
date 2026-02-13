@@ -44,6 +44,7 @@ def main():
         udp_server.stop()
         http_server.stop()
         log.info("Applicazione terminata.")
+        log.write_footer()
 
 if __name__ == "__main__":
     main()
